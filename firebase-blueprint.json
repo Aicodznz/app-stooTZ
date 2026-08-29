@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account and profile details",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "points": { "type": "number" },
+        "streak": { "type": "number" },
+        "lastLogin": { "type": "number" },
+        "status": { "type": "string", "enum": ["Active", "Blocked"] }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Purchase transaction order submitted by a student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "items": { "type": "string" },
+        "amount": { "type": "number" },
+        "ref": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "rejected"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "amount", "ref", "status", "createdAt"]
+    },
+    "ContentItem": {
+      "title": "ContentItem",
+      "description": "Learning material (course, test, or lecture)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string", "enum": ["courses", "tests", "lectures"] },
+        "isFree": { "type": "boolean" },
+        "icon": { "type": "string" }
+      },
+      "required": ["title", "category"]
+    },
+    "CodApp": {
+      "title": "CodApp",
+      "description": "Application promoted in the App store catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "developer": { "type": "string" },
+        "priceType": { "type": "string", "enum": ["free", "paid"] },
+        "price": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Banner": {
+      "title": "Banner",
+      "description": "Promotional banner in the hero slider",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "imgUrl": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Order records created by users and reviewed by admins"
+    },
+    "/courses/{courseId}": {
+      "schema": "ContentItem",
+      "description": "Course content items"
+    },
+    "/tests/{testId}": {
+      "schema": "ContentItem",
+      "description": "Test and exam content items"
+    },
+    "/lectures/{lectureId}": {
+      "schema": "ContentItem",
+      "description": "Lecture content items"
+    },
+    "/apps/{appId}": {
+      "schema": "CodApp",
+      "description": "Promoted apps catalog"
+    },
+    "/banners/{bannerId}": {
+      "schema": "Banner",
+      "description": "Hero banner slides"
+    }
+  }
+}
