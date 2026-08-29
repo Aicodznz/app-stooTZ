@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 
 // Credentials provided in user request
 export const firebaseConfig = {
-  apiKey: "AIzaSyD7qJ4wHtx0vrZZylVOXnDEIv5SxHIdjic",
-  authDomain: "codtz-1db32.firebaseapp.com",
-  databaseURL: "https://codtz-1db32-default-rtdb.firebaseio.com",
-  projectId: "codtz-1db32",
-  storageBucket: "codtz-1db32.firebasestorage.app",
-  messagingSenderId: "1035797221399",
-  appId: "1:1035797221399:web:fbd752e36c99fdedefcc52"
+  apiKey: "AIzaSyBjZc00HFXiBgO0NYrj1_nZelPOELgyJVc",
+  authDomain: "kanzu2-5a6fe.firebaseapp.com",
+  databaseURL: "https://kanzu2-5a6fe-default-rtdb.firebaseio.com",
+  projectId: "kanzu2-5a6fe",
+  storageBucket: "kanzu2-5a6fe.firebasestorage.app",
+  messagingSenderId: "519222725725",
+  appId: "1:519222725725:web:ce2fdb261e907b427351b4"
 };
 
 export const ADMIN_EMAIL = 'amytzee@gmail.com';
