@@ -26,8 +26,10 @@ import {
   Activity,
   CheckCheck,
   Smartphone,
-  CreditCard
+  CreditCard,
+  Code2
 } from 'lucide-react';
+import { DeveloperPanel } from './DeveloperPanel';
 import { cn, formatPrice, getInitials } from '../lib/utils';
 import { ContentItem, CodApp, Banner, Category } from '../types';
 import { addDoc, setDoc } from 'firebase/firestore';
@@ -1195,7 +1197,7 @@ export const AnalyticsTab: React.FC = () => {
 
 export const AdminPage: React.FC = () => {
   const { orders } = useApp();
-  const [tab, setTab] = useState<'analytics' | 'orders' | 'content' | 'apps' | 'banners' | 'users'>('analytics');
+  const [tab, setTab] = useState<'analytics' | 'orders' | 'content' | 'apps' | 'banners' | 'users' | 'developer'>('analytics');
   const [pendingCount, setPendingCount] = useState(() => orders.filter(o => o.status === 'pending').length);
 
   useEffect(() => {
@@ -1224,6 +1226,7 @@ export const AdminPage: React.FC = () => {
     { id: 'apps', label: 'Apps', icon: Bolt },
     { id: 'banners', label: 'Banners', icon: Trophy },
     { id: 'users', label: 'Users', icon: UserIcon },
+    { id: 'developer', label: 'Developer Console', icon: Code2 },
   ];
 
   return (
@@ -1259,6 +1262,7 @@ export const AdminPage: React.FC = () => {
         {tab === 'content' && <ContentTab />}
         {tab === 'apps' && <AppsTab />}
         {tab === 'banners' && <BannersTab />}
+        {tab === 'developer' && <DeveloperPanel />}
       </div>
     </div>
   );

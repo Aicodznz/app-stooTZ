@@ -28,14 +28,16 @@ import { AdminPage } from './components/AdminPage';
 import { CartPage } from './components/CartPage';
 import { AuthPage } from './components/AuthPage';
 import { PaymentPage } from './components/PaymentPage';
+import { DeveloperPanel } from './components/DeveloperPanel';
 import { AppDetailOverlay, BuyModal, QuizOverlay } from './components/Overlays';
 import { VideoPlayerOverlay, PDFViewerOverlay } from './components/MediaOverlays';
 import { CertificateOverlay } from './components/CertificateOverlay';
 import { ContentItem, CodApp } from './types';
 import { db } from './services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { Code2 } from 'lucide-react';
 
-type PageID = 'home' | 'dash' | 'lib' | 'cart' | 'pay' | 'lb' | 'adm' | 'login' | 'reg';
+type PageID = 'home' | 'dash' | 'lib' | 'cart' | 'pay' | 'lb' | 'adm' | 'login' | 'reg' | 'dev';
 
 function AppContent() {
   const { theme, setTheme, lang, setLang, cart, user, isAdm, logout, apps, courses, tests, lectures, addToCart, lib, profile, pts } = useApp();
@@ -98,6 +100,7 @@ function AppContent() {
       case 'lib': return <LibraryPage onOpenContent={handleOpenContent} />;
       case 'lb': return <LeaderboardPage />;
       case 'adm': return isAdm ? <AdminPage /> : <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} />;
+      case 'dev': return <DeveloperPanel onClose={() => setActivePage('home')} />;
       case 'cart': return <CartPage onCheckout={() => setActivePage(user ? 'pay' : 'login')} />;
       case 'pay': return <PaymentPage onBack={() => setActivePage('home')} />;
       case 'login': return <AuthPage mode="login" onSwitch={(m) => setActivePage(m as PageID)} onSuccess={() => setActivePage('dash')} />;
@@ -108,70 +111,88 @@ function AppContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-theme text-theme selection:bg-primary selection:text-white">
-      <header className="fixed top-0 inset-x-0 h-[58px] glass bg-topbg border-b border-theme z-50 flex items-center px-4 justify-between max-w-lg mx-auto">
-        <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActivePage('home')}>
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-glow-sm">
-            <span className="text-white font-black text-sm">C</span>
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-base font-black font-heading leading-tight tracking-tight text-text1">
-              CodZnz <span className="text-primary font-bold text-xs bg-primary/10 px-1.5 py-0.5 rounded-md ml-0.5">PRO</span>
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button 
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-            className="w-8 h-8 flex items-center justify-center hover:bg-card2 text-text2 hover:text-text1 rounded-xl transition-colors"
-            title="Theme"
-          >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
-          
-          <button 
-            onClick={() => setLang(lang === 'en' ? 'sw' : 'en')} 
-            className="h-8 px-2 flex items-center justify-center hover:bg-card2 text-text2 hover:text-text1 rounded-xl transition-colors text-xs font-bold gap-1 border border-theme"
-            title="Language"
-          >
-            <Languages size={14} />
-            <span className="uppercase text-[10px] font-black">{lang}</span>
-          </button>
-
-          <button 
-            onClick={() => setActivePage('cart')} 
-            className="w-8 h-8 flex items-center justify-center hover:bg-card2 text-text2 hover:text-text1 rounded-xl transition-colors relative"
-            title="Cart"
-          >
-            <ShoppingCart size={17} />
-            {cart.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-err text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-black border-2 border-theme">
-                {cart.length}
-              </span>
-            )}
-          </button>
-
-          {user ? (
-            <div 
-              onClick={() => setActivePage('dash')}
-              className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-xs text-white font-black cursor-pointer shadow-sm hover:scale-105 transition-transform"
-              title="Dashboard"
-            >
-              {user.email?.[0].toUpperCase()}
+      {/* Top Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 h-[62px] bg-topbg backdrop-blur-xl border-b border-theme z-50 shadow-xs">
+        <div className="w-full max-w-lg mx-auto h-full px-3.5 sm:px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActivePage('home')}>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-glow-sm">
+              <span className="text-white font-black text-sm">C</span>
             </div>
-          ) : (
+            <div className="flex flex-col">
+              <h1 className="text-base font-black font-heading leading-tight tracking-tight text-text1">
+                CodZnz <span className="text-primary font-bold text-xs bg-primary/10 px-1.5 py-0.5 rounded-md ml-0.5">PRO</span>
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
             <button 
-              onClick={() => setActivePage('login')} 
-              className="h-8 px-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+              onClick={() => setActivePage(activePage === 'dev' ? 'home' : 'dev')} 
+              className={cn(
+                "h-8 px-2 flex items-center justify-center rounded-xl transition-all text-xs font-bold gap-1 border",
+                activePage === 'dev'
+                  ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                  : "hover:bg-card2 text-text2 hover:text-text1 border-theme"
+              )}
+              title="Developer Panel"
             >
-              <LogIn size={13} />
-              <span>{lang === 'en' ? 'Login' : 'Ingia'}</span>
+              <Code2 size={14} className={activePage === 'dev' ? "animate-pulse" : ""} />
+              <span className="text-[10px] font-black uppercase hidden xs:inline">DEV</span>
             </button>
-          )}
+
+            <button 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+              className="w-8 h-8 flex items-center justify-center hover:bg-card2 text-text2 hover:text-text1 rounded-xl transition-colors"
+              title="Theme"
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            
+            <button 
+              onClick={() => setLang(lang === 'en' ? 'sw' : 'en')} 
+              className="h-8 px-2 flex items-center justify-center hover:bg-card2 text-text2 hover:text-text1 rounded-xl transition-colors text-xs font-bold gap-1 border border-theme"
+              title="Language"
+            >
+              <Languages size={14} />
+              <span className="uppercase text-[10px] font-black">{lang}</span>
+            </button>
+
+            <button 
+              onClick={() => setActivePage('cart')} 
+              className="w-8 h-8 flex items-center justify-center hover:bg-card2 text-text2 hover:text-text1 rounded-xl transition-colors relative"
+              title="Cart"
+            >
+              <ShoppingCart size={17} />
+              {cart.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-err text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-black border-2 border-theme">
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
+            {user ? (
+              <div 
+                onClick={() => setActivePage('dash')}
+                className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-xs text-white font-black cursor-pointer shadow-sm hover:scale-105 transition-transform"
+                title="Dashboard"
+              >
+                {user.email?.[0].toUpperCase()}
+              </div>
+            ) : (
+              <button 
+                onClick={() => setActivePage('login')} 
+                className="h-8 px-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+              >
+                <LogIn size={13} />
+                <span>{lang === 'en' ? 'Login' : 'Ingia'}</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-lg mx-auto pt-[66px] pb-[86px] px-3.5 sm:px-4">
+      {/* Main Body */}
+      <main className="flex-1 w-full max-w-lg mx-auto pt-[74px] pb-[112px] px-3.5 sm:px-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={activePage}
@@ -185,53 +206,56 @@ function AppContent() {
         </AnimatePresence>
       </main>
 
-      <nav className="fixed bottom-0 inset-x-0 h-[66px] glass bg-navbg border-t border-theme z-50 flex items-center justify-around px-2 max-w-lg mx-auto">
-        {navItems.map((item) => {
-          if (item.adminOnly && !isAdm) return null;
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          if (item.isFab) {
+      {/* Bottom Fixed Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 h-[68px] bg-navbg backdrop-blur-xl border-t border-theme z-50 shadow-lg">
+        <div className="w-full max-w-lg mx-auto h-full px-2 flex items-center justify-around">
+          {navItems.map((item) => {
+            if (item.adminOnly && !isAdm) return null;
+            const Icon = item.icon;
+            const isActive = activePage === item.id;
+            if (item.isFab) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActivePage(item.id as PageID)}
+                  className={cn(
+                    "relative -top-3.5 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-95 duration-200",
+                    isActive 
+                      ? "bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-primary/30 ring-4 ring-primary/20 scale-105" 
+                      : "bg-card text-text2 border border-theme hover:text-text1"
+                  )}
+                  title="Learning Dashboard"
+                >
+                  <Icon size={22} />
+                </button>
+              );
+            }
             return (
               <button
                 key={item.id}
                 onClick={() => setActivePage(item.id as PageID)}
                 className={cn(
-                  "relative -top-3.5 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-95 duration-200",
-                  isActive 
-                    ? "bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-primary/30 ring-4 ring-primary/20 scale-105" 
-                    : "bg-card text-text2 border border-theme hover:text-text1"
+                  "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2 rounded-xl",
+                  isActive ? "text-primary font-bold" : "text-text3 hover:text-text2"
                 )}
-                title="Learning Dashboard"
               >
-                <Icon size={22} />
+                <Icon size={18} className={cn("transition-transform duration-200", isActive && "scale-110")} />
+                <span className="text-[10px] font-bold tracking-tight uppercase whitespace-nowrap">
+                  {lang === 'en' ? item.label.en : item.label.sw}
+                </span>
               </button>
             );
-          }
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActivePage(item.id as PageID)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2 rounded-xl",
-                isActive ? "text-primary font-bold" : "text-text3 hover:text-text2"
-              )}
-            >
-              <Icon size={18} className={cn("transition-transform duration-200", isActive && "scale-110")} />
-              <span className="text-[10px] font-bold tracking-tight uppercase whitespace-nowrap">
-                {lang === 'en' ? item.label.en : item.label.sw}
-              </span>
-            </button>
-          );
-        })}
-        <button
-          onClick={() => user ? logout() : setActivePage('login')}
-          className="flex flex-col items-center justify-center gap-1 text-text3 hover:text-text2 transition-all py-1 px-2 rounded-xl"
-        >
-          {user ? <LogOut size={18} /> : <LogIn size={18} />}
-          <span className="text-[10px] font-bold tracking-tight uppercase whitespace-nowrap">
-            {user ? (lang === 'en' ? 'Logout' : 'Toka') : (lang === 'en' ? 'Login' : 'Ingia')}
-          </span>
-        </button>
+          })}
+          <button
+            onClick={() => user ? logout() : setActivePage('login')}
+            className="flex flex-col items-center justify-center gap-1 text-text3 hover:text-text2 transition-all py-1 px-2 rounded-xl"
+          >
+            {user ? <LogOut size={18} /> : <LogIn size={18} />}
+            <span className="text-[10px] font-bold tracking-tight uppercase whitespace-nowrap">
+              {user ? (lang === 'en' ? 'Logout' : 'Toka') : (lang === 'en' ? 'Login' : 'Ingia')}
+            </span>
+          </button>
+        </div>
       </nav>
 
       {/* Overlays */}
