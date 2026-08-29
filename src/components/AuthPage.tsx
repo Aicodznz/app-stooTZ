@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { 
   signInWithEmailAndPassword, 
@@ -46,6 +46,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    setCurrentMode(initialMode);
+  }, [initialMode]);
+
   // Password strength calculation
   const getPasswordStrength = () => {
     if (!password) return { level: 0, label: '', color: '' };
@@ -65,7 +69,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
   const handleSwitchTab = (newMode: 'login' | 'register') => {
     setCurrentMode(newMode);
     setError('');
-    onSwitch(newMode);
+    if (onSwitch) {
+      onSwitch(newMode);
+    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {

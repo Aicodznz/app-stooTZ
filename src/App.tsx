@@ -37,7 +37,7 @@ import { db } from './services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Code2 } from 'lucide-react';
 
-type PageID = 'home' | 'dash' | 'lib' | 'cart' | 'pay' | 'lb' | 'adm' | 'login' | 'reg' | 'dev';
+type PageID = 'home' | 'dash' | 'lib' | 'cart' | 'pay' | 'lb' | 'adm' | 'login' | 'reg' | 'register' | 'dev';
 
 function AppContent() {
   const { theme, setTheme, lang, setLang, cart, user, isAdm, logout, apps, courses, tests, lectures, addToCart, lib, profile, pts } = useApp();
@@ -103,8 +103,9 @@ function AppContent() {
       case 'dev': return <DeveloperPanel onClose={() => setActivePage('home')} />;
       case 'cart': return <CartPage onCheckout={() => setActivePage(user ? 'pay' : 'login')} />;
       case 'pay': return <PaymentPage onBack={() => setActivePage('home')} />;
-      case 'login': return <AuthPage mode="login" onSwitch={(m) => setActivePage(m as PageID)} onSuccess={() => setActivePage('dash')} />;
-      case 'reg': return <AuthPage mode="register" onSwitch={(m) => setActivePage(m as PageID)} onSuccess={() => setActivePage('dash')} />;
+      case 'login': return <AuthPage mode="login" onSwitch={(m) => setActivePage(m === 'register' ? 'register' : 'login')} onSuccess={() => setActivePage('dash')} />;
+      case 'reg':
+      case 'register': return <AuthPage mode="register" onSwitch={(m) => setActivePage(m === 'register' ? 'register' : 'login')} onSuccess={() => setActivePage('dash')} />;
       default: return <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} />;
     }
   };
