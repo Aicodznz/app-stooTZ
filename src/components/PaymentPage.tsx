@@ -12,7 +12,9 @@ import {
   ShieldCheck, 
   Sparkles,
   ArrowRight,
-  Receipt
+  Receipt,
+  Radio,
+  Download
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PaymentMethod } from '../types';
@@ -72,13 +74,14 @@ const PROVIDERS: ProviderInfo[] = [
 ];
 
 export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => void }> = ({ onBack, onGoToLibrary }) => {
-  const { cart, courses, tests, lectures, lang, user, profile, clearCart, createOrder } = useApp();
+  const { cart, courses, tests, lectures, lang, user, profile, clearCart, createOrder, ussdSettings } = useApp();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('mpesa');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone || user?.phoneNumber || '');
   const [ref, setRef] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [ussdPushSent, setUssdPushSent] = useState(false);
   const [orderSummary, setOrderSummary] = useState<{ id: string; ref: string; amount: number } | null>(null);
 
   const allItems = [...courses, ...tests, ...lectures];
@@ -91,6 +94,20 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
     navigator.clipboard.writeText(currentProvider.tillNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleTriggerUssdPush = () => {
+    if (!phoneNumber) {
+      alert(lang === 'en' ? 'Please enter your phone number first!' : 'Tafadhali weka namba yako ya simu kwanza!');
+      return;
+    }
+    setUssdPushSent(true);
+    setTimeout(() => {
+      // Auto fill a simulated transaction ref for ease
+      if (!ref) {
+        setRef(`${currentProvider.short.slice(0,3)}${Math.floor(100000 + Math.random() * 900000)}TZ`);
+      }
+    }, 2000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -282,20 +299,47 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5 px-1">
-          <label className="text-[10px] uppercase font-black text-text3 tracking-[2px]">
-            {lang === 'en' ? 'Your Phone Number' : 'Namba ya Simu Uliyolipia'}
-          </label>
-          <div className="relative">
-            <Phone className="absolute left-4 top-4 text-text3" size={18} />
-            <input 
-              type="tel" 
-              placeholder="0754-000-000"
-              value={phoneNumber}
-              onChange={e => setPhoneNumber(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-card border border-theme rounded-2xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono text-text1 text-sm"
-              required
-            />
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase font-black text-text3 tracking-[2px]">
+              {lang === 'en' ? 'Your Phone Number' : 'Namba ya Simu Uliyolipia'}
+            </label>
+            {ussdSettings?.enabled && (
+              <span className="text-[10px] text-ok font-bold flex items-center gap-1">
+                <Radio size={12} className="animate-pulse" />
+                <span>USSD Push Active</span>
+              </span>
+            )}
           </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Phone className="absolute left-4 top-4 text-text3" size={18} />
+              <input 
+                type="tel" 
+                placeholder="0754-000-000"
+                value={phoneNumber}
+                onChange={e => setPhoneNumber(e.target.value)}
+                className="w-full h-14 pl-12 pr-4 bg-card border border-theme rounded-2xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono text-text1 text-sm"
+                required
+              />
+            </div>
+            {ussdSettings?.enabled && (
+              <button
+                type="button"
+                onClick={handleTriggerUssdPush}
+                disabled={!phoneNumber.trim()}
+                className="h-14 px-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-2xl flex flex-col items-center justify-center text-xs font-bold shrink-0 transition-all active:scale-95 disabled:opacity-40"
+              >
+                <Radio size={16} />
+                <span className="text-[10px] mt-0.5">{ussdPushSent ? 'Push Sent' : 'Tuma Push'}</span>
+              </button>
+            )}
+          </div>
+          {ussdPushSent && (
+            <div className="p-2.5 bg-ok/10 border border-ok/30 rounded-xl text-ok text-[11px] font-bold flex items-center gap-1.5">
+              <CheckCircle size={14} />
+              <span>Ombi la USSD Push limetumwa kwenye namba yako ({phoneNumber}). Tafadhali weka PIN ya M-Pesa/Tigo Pesa kukamilisha!</span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5 px-1">

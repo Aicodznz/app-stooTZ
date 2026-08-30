@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { Order, UserProfile } from '../types';
+import { Order, UserProfile, SiteSettings, UssdSettings } from '../types';
 import { 
   Check, 
   X, 
@@ -27,7 +27,32 @@ import {
   CheckCheck,
   Smartphone,
   CreditCard,
-  Code2
+  Code2,
+  Palette,
+  Globe,
+  Radio,
+  Download,
+  Upload,
+  Sparkles,
+  Shield,
+  ShieldCheck,
+  UserCheck,
+  Search,
+  Key,
+  Layers,
+  Save,
+  CheckCircle,
+  ExternalLink,
+  PhoneCall,
+  Sliders,
+  Award,
+  Bell,
+  Send,
+  Flame,
+  Tag,
+  Megaphone,
+  Image as ImageIcon,
+  Clock
 } from 'lucide-react';
 import { DeveloperPanel } from './DeveloperPanel';
 import { cn, formatPrice, getInitials } from '../lib/utils';
@@ -906,8 +931,13 @@ export const OrdersTab: React.FC = () => {
 };
 
 export const UsersTab: React.FC = () => {
-    const { users: appUsers } = useApp();
+    const { users: appUsers, updateUserByAdmin, deleteUserByAdmin } = useApp();
     const [users, setUsers] = useState<UserProfile[]>(appUsers);
+    const [search, setSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'developer' | 'admin'>('all');
+    const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [successMsg, setSuccessMsg] = useState('');
     
     useEffect(() => {
         setUsers(appUsers);
@@ -918,7 +948,7 @@ export const UsersTab: React.FC = () => {
         try {
           unsub = onSnapshot(collection(db, 'users'), (snap) => {
               if (!snap.empty) {
-                const docs = snap.docs.map(d => d.data() as UserProfile);
+                const docs = snap.docs.map(d => ({ ...d.data(), uid: d.id || d.data().uid } as UserProfile));
                 setUsers(docs);
               }
           }, (err) => {
@@ -933,53 +963,761 @@ export const UsersTab: React.FC = () => {
     const toggleBlock = async (uid: string, currentStatus: string) => {
         const nextStatus = currentStatus === 'Active' ? 'Blocked' : 'Active';
         setUsers(prev => prev.map(u => u.uid === uid ? { ...u, status: nextStatus } : u));
-        try {
-          await updateDoc(doc(db, 'users', uid), { status: nextStatus });
-        } catch (err) {
-          console.warn('Firebase user update status fallback:', err);
-        }
+        await updateUserByAdmin(uid, { status: nextStatus });
     };
 
-    const deleteUser = async (uid: string) => {
-       if (confirm('Delete this user? This cannot be undone.')) {
+    const handleRoleChange = async (uid: string, newRole: 'user' | 'developer' | 'admin') => {
+        setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: newRole } : u));
+        await updateUserByAdmin(uid, { role: newRole });
+        setSuccessMsg(`Role updated to ${newRole}`);
+        setTimeout(() => setSuccessMsg(''), 2500);
+    };
+
+    const handleDelete = async (uid: string) => {
+       if (confirm('Are you sure you want to remove this user/developer? This action is permanent.')) {
            setUsers(prev => prev.filter(u => u.uid !== uid));
-           try {
-             await deleteDoc(doc(db, 'users', uid));
-           } catch (err) {
-             console.warn('Firebase user delete fallback:', err);
-           }
+           await deleteUserByAdmin(uid);
+           setSuccessMsg('User successfully deleted');
+           setTimeout(() => setSuccessMsg(''), 2500);
        }
     };
 
+    const handleSaveEdit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingUser) return;
+      setIsSaving(true);
+      await updateUserByAdmin(editingUser.uid, {
+        name: editingUser.name,
+        phone: editingUser.phone || '',
+        email: editingUser.email,
+        photoURL: editingUser.photoURL || '',
+        role: editingUser.role || 'user',
+        status: editingUser.status || 'Active',
+        points: Number(editingUser.points) || 0
+      });
+      setIsSaving(false);
+      setEditingUser(null);
+      setSuccessMsg('User details updated successfully!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    };
+
+    const filteredUsers = users.filter(u => {
+      const matchQuery = (u.name || '').toLowerCase().includes(search.toLowerCase()) || 
+                         (u.email || '').toLowerCase().includes(search.toLowerCase()) ||
+                         (u.phone || '').includes(search);
+      const matchRole = roleFilter === 'all' ? true : (u.role || 'user') === roleFilter;
+      return matchQuery && matchRole;
+    });
+
     return (
-        <div className="space-y-3">
-            {users.map(u => (
-                <div key={u.uid} className="bg-card border border-theme p-4 rounded-2xl flex items-center gap-4 shadow-sm">
-                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                      {getInitials(u.name)}
-                   </div>
-                   <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm truncate">{u.name}</div>
-                      <div className="text-[10px] text-text3 truncate tracking-wide">{u.email}</div>
-                   </div>
-                   <div className="flex gap-1">
-                      <button 
-                        onClick={() => toggleBlock(u.uid, u.status)}
-                        className={cn("p-2 rounded-lg border border-theme", u.status === 'Active' ? "text-warn" : "text-ok")}
-                      >
-                         {u.status === 'Active' ? <Ban size={16} /> : <Unlock size={16} />}
-                      </button>
-                      <button 
-                        onClick={() => deleteUser(u.uid)}
-                        className="p-2 border border-theme text-err rounded-lg"
-                      >
-                         <Trash2 size={16} />
-                      </button>
-                   </div>
+        <div className="space-y-4">
+            {successMsg && (
+              <div className="p-3 bg-ok/10 border border-ok/20 text-ok text-xs font-bold rounded-xl flex items-center gap-2">
+                <CheckCircle size={16} />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            {/* Header Controls */}
+            <div className="bg-card border border-theme p-4 rounded-2xl space-y-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-heading font-black text-sm text-text1">Manage Users & Developers</h3>
+                  <p className="text-[11px] text-text3">Dhibiti watumiaji, madereva (developers) na watawala (admins)</p>
                 </div>
-            ))}
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                  Total: {users.length}
+                </span>
+              </div>
+
+              {/* Search & Role Filters */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text3" />
+                  <input 
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name, email, phone..."
+                    className="w-full h-9 pl-8 pr-3 text-xs bg-bg3/60 border border-theme rounded-xl outline-none focus:border-primary text-text1"
+                  />
+                </div>
+                <div className="flex gap-1 overflow-x-auto">
+                  {(['all', 'user', 'developer', 'admin'] as const).map(role => (
+                    <button
+                      key={role}
+                      onClick={() => setRoleFilter(role)}
+                      className={cn(
+                        "h-9 px-3 text-xs font-bold rounded-xl whitespace-nowrap transition-all uppercase text-[10px]",
+                        roleFilter === role ? "bg-primary text-white" : "bg-bg3 border border-theme text-text2 hover:text-text1"
+                      )}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* User Edit Modal */}
+            {editingUser && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-card border border-theme w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-theme pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                        <Edit2 size={16} />
+                      </div>
+                      <h4 className="font-bold text-sm text-text1">Edit User / Developer</h4>
+                    </div>
+                    <button onClick={() => setEditingUser(null)} className="p-1 text-text3 hover:text-text1">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveEdit} className="space-y-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-text3 uppercase">Full Name</label>
+                      <input 
+                        type="text" 
+                        value={editingUser.name || ''} 
+                        onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                        required
+                        className="w-full h-9 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-text3 uppercase">Phone Number</label>
+                        <input 
+                          type="text" 
+                          value={editingUser.phone || ''} 
+                          onChange={e => setEditingUser({ ...editingUser, phone: e.target.value })}
+                          placeholder="e.g. 0712345678"
+                          className="w-full h-9 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-text3 uppercase">Points (XP)</label>
+                        <input 
+                          type="number" 
+                          value={editingUser.points || 0} 
+                          onChange={e => setEditingUser({ ...editingUser, points: Number(e.target.value) })}
+                          className="w-full h-9 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-text3 uppercase">Email Address</label>
+                      <input 
+                        type="email" 
+                        value={editingUser.email || ''} 
+                        onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
+                        required
+                        className="w-full h-9 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-text3 uppercase">Profile Picture URL</label>
+                      <input 
+                        type="url" 
+                        value={editingUser.photoURL || ''} 
+                        onChange={e => setEditingUser({ ...editingUser, photoURL: e.target.value })}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full h-9 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-text3 uppercase">Role</label>
+                        <select 
+                          value={editingUser.role || 'user'} 
+                          onChange={e => setEditingUser({ ...editingUser, role: e.target.value as any })}
+                          className="w-full h-9 px-2 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                        >
+                          <option value="user">User (Mwanafunzi)</option>
+                          <option value="developer">Developer (Mtengenezaji)</option>
+                          <option value="admin">Admin (Msimamizi Mkuu)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-text3 uppercase">Account Status</label>
+                        <select 
+                          value={editingUser.status || 'Active'} 
+                          onChange={e => setEditingUser({ ...editingUser, status: e.target.value as any })}
+                          className="w-full h-9 px-2 text-xs bg-bg3 border border-theme rounded-xl text-text1 mt-1 outline-none focus:border-primary"
+                        >
+                          <option value="Active">Active (Inafanya kazi)</option>
+                          <option value="Blocked">Blocked (Imezuiwa)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        type="button" 
+                        onClick={() => setEditingUser(null)}
+                        className="flex-1 h-9 rounded-xl border border-theme text-xs font-bold text-text2 hover:bg-bg3"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSaving}
+                        className="flex-1 h-9 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:bg-primary/90"
+                      >
+                        <Save size={14} />
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Users List */}
+            <div className="space-y-2.5">
+                {filteredUsers.length === 0 ? (
+                  <div className="text-center py-12 bg-card border border-theme rounded-2xl text-text3 text-xs">
+                    Hakuna mtumiaji aliyepatikana kwa utafutaji huu.
+                  </div>
+                ) : (
+                  filteredUsers.map(u => {
+                    const isDev = u.role === 'developer';
+                    const isAdm = u.role === 'admin';
+                    return (
+                      <div key={u.uid} className="bg-card border border-theme p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-primary/30 transition-all">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={cn(
+                            "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm overflow-hidden shrink-0 border",
+                            isAdm ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : 
+                            isDev ? "bg-purple-500/10 text-purple-400 border-purple-500/30" : 
+                            "bg-primary/10 text-primary border-primary/20"
+                          )}>
+                            {u.photoURL ? (
+                              <img src={u.photoURL} alt={u.name} className="w-full h-full object-cover" />
+                            ) : (
+                              getInitials(u.name)
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-text1 truncate">{u.name}</span>
+                              <span className={cn(
+                                "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border",
+                                isAdm ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                                isDev ? "bg-purple-500/15 text-purple-400 border-purple-500/30" :
+                                "bg-bg3 text-text3 border-theme"
+                              )}>
+                                {u.role || 'user'}
+                              </span>
+                              {u.status === 'Blocked' && (
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-err/15 text-err border border-err/30">
+                                  Blocked
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-text3 truncate mt-0.5">
+                              <span>{u.email}</span>
+                              {u.phone && <span>• 📞 {u.phone}</span>}
+                              <span>• ⭐ {u.points || 0} pts</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1.5 self-end sm:self-center">
+                          {/* Role selector dropdown */}
+                          <select 
+                            value={u.role || 'user'}
+                            onChange={(e) => handleRoleChange(u.uid, e.target.value as any)}
+                            className="h-8 px-2 text-[11px] font-bold bg-bg3 border border-theme rounded-xl text-text2 outline-none focus:border-primary"
+                            title="Badilisha Role"
+                          >
+                            <option value="user">User</option>
+                            <option value="developer">Developer 💻</option>
+                            <option value="admin">Admin 🛡️</option>
+                          </select>
+
+                          <button 
+                            onClick={() => setEditingUser(u)}
+                            className="p-2 bg-bg3 border border-theme text-text2 hover:text-text1 rounded-xl transition-colors"
+                            title="Edit User Details"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
+                          <button 
+                            onClick={() => toggleBlock(u.uid, u.status)}
+                            className={cn(
+                              "p-2 rounded-xl border transition-colors", 
+                              u.status === 'Active' ? "border-theme text-warn hover:bg-warn/10" : "border-ok/30 bg-ok/10 text-ok"
+                            )}
+                            title={u.status === 'Active' ? "Block User" : "Unblock User"}
+                          >
+                            {u.status === 'Active' ? <Ban size={14} /> : <Unlock size={14} />}
+                          </button>
+
+                          <button 
+                            onClick={() => handleDelete(u.uid)}
+                            className="p-2 border border-theme text-err hover:bg-err/10 rounded-xl transition-colors"
+                            title="Delete User Permanently"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+            </div>
         </div>
     );
+};
+
+export const BrandingTab: React.FC = () => {
+  const { siteSettings, updateSiteSettings } = useApp();
+  const [formData, setFormData] = useState<SiteSettings>(siteSettings);
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setFormData(siteSettings);
+  }, [siteSettings]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    await updateSiteSettings(formData);
+    setIsSaving(false);
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+  };
+
+  return (
+    <div className="space-y-4">
+      {success && (
+        <div className="p-3 bg-ok/10 border border-ok/20 text-ok text-xs font-bold rounded-xl flex items-center gap-2">
+          <CheckCircle size={16} />
+          <span>Branding and website settings updated successfully!</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="bg-card border border-theme p-5 rounded-2xl space-y-4 shadow-sm">
+        <div className="flex items-center gap-2.5 pb-2 border-b border-theme">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Globe size={18} />
+          </div>
+          <div>
+            <h3 className="font-heading font-black text-sm text-text1">Site Identity & Logo</h3>
+            <p className="text-[11px] text-text3">Weka jina la mfumo na picha ya logo (Website Branding)</p>
+          </div>
+        </div>
+
+        {/* Live Preview */}
+        <div className="p-3 bg-bg3/50 border border-theme rounded-xl flex items-center gap-3">
+          {formData.logoUrl ? (
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-theme bg-card shadow-sm shrink-0">
+              <img src={formData.logoUrl} alt="Logo preview" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-black text-white text-base shadow-sm shrink-0">
+              {formData.logoEmoji || '⚡'}
+            </div>
+          )}
+          <div>
+            <div className="text-[10px] text-text3 font-bold uppercase">Header Preview:</div>
+            <div className="font-black text-sm text-text1 flex items-center gap-1.5">
+              <span>{formData.siteName || 'CodZnz Pro'}</span>
+              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">PRO</span>
+            </div>
+            <div className="text-[11px] text-text3">{formData.siteTagline || 'Tanzania #1 Coding Education Platform'}</div>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-1">Website Name (Jina la Website)</label>
+          <input 
+            type="text" 
+            value={formData.siteName || ''} 
+            onChange={e => setFormData({ ...formData, siteName: e.target.value })}
+            placeholder="e.g. CodZnz Pro, Zanzibar Code Academy"
+            required
+            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-1">Tagline / Slogan</label>
+          <input 
+            type="text" 
+            value={formData.siteTagline || ''} 
+            onChange={e => setFormData({ ...formData, siteTagline: e.target.value })}
+            placeholder="e.g. Tanzania #1 Coding Education Platform"
+            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-1">Logo Image URL (Picha ya Logo)</label>
+          <input 
+            type="url" 
+            value={formData.logoUrl || ''} 
+            onChange={e => setFormData({ ...formData, logoUrl: e.target.value })}
+            placeholder="https://example.com/logo.png"
+            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+          />
+          <p className="text-[10px] text-text3 mt-1">Unaweza kuweka link ya picha ya logo (PNG, JPG, SVG) au ukiacha wazi itatumia Emoji/Initial.</p>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-1">Default Logo Emoji (Kama hakuna picha)</label>
+          <input 
+            type="text" 
+            value={formData.logoEmoji || '⚡'} 
+            onChange={e => setFormData({ ...formData, logoEmoji: e.target.value })}
+            maxLength={3}
+            className="w-24 h-10 px-3 text-center text-base bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={isSaving}
+          className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
+        >
+          <Save size={15} />
+          {isSaving ? 'Inahifadhi...' : 'Hifadhi Mabadiliko ya Branding'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export const ThemeTab: React.FC = () => {
+  const { siteSettings, updateSiteSettings } = useApp();
+  const [primaryColor, setPrimaryColor] = useState(siteSettings.primaryColor || '#4F46E5');
+  const [accentColor, setAccentColor] = useState(siteSettings.accentColor || '#7C3AED');
+  const [accent2Color, setAccent2Color] = useState(siteSettings.accent2Color || '#EC4899');
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const presets = [
+    { name: 'Indigo Dream (Default)', primary: '#4F46E5', accent: '#7C3AED', accent2: '#EC4899' },
+    { name: 'Emerald Tanzania', primary: '#059669', accent: '#10B981', accent2: '#F59E0B' },
+    { name: 'Zanzibar Ocean Blue', primary: '#0284C7', accent: '#38BDF8', accent2: '#06B6D4' },
+    { name: 'Ruby Flame & Crimson', primary: '#E11D48', accent: '#F43F5E', accent2: '#FB923C' },
+    { name: 'Cyberpunk Purple Gold', primary: '#9333EA', accent: '#C084FC', accent2: '#EAB308' },
+    { name: 'Modern Dark Slate & Cyan', primary: '#0EA5E9', accent: '#6366F1', accent2: '#14B8A6' }
+  ];
+
+  const handleApply = async (p: string, a: string, a2: string) => {
+    setPrimaryColor(p);
+    setAccentColor(a);
+    setAccent2Color(a2);
+    setIsSaving(true);
+    await updateSiteSettings({ primaryColor: p, accentColor: a, accent2Color: a2 });
+    setIsSaving(false);
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+  };
+
+  const handleSaveCustom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    await updateSiteSettings({ primaryColor, accentColor, accent2Color });
+    setIsSaving(false);
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+  };
+
+  return (
+    <div className="space-y-4">
+      {success && (
+        <div className="p-3 bg-ok/10 border border-ok/20 text-ok text-xs font-bold rounded-xl flex items-center gap-2">
+          <CheckCircle size={16} />
+          <span>System colors updated across all screens in real-time!</span>
+        </div>
+      )}
+
+      <div className="bg-card border border-theme p-5 rounded-2xl space-y-4 shadow-sm">
+        <div className="flex items-center gap-2.5 pb-2 border-b border-theme">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Palette size={18} />
+          </div>
+          <div>
+            <h3 className="font-heading font-black text-sm text-text1">System Color Palette</h3>
+            <p className="text-[11px] text-text3">Dhibiti rangi nzima ya mfumo (Rangi Kuu na Vivuli)</p>
+          </div>
+        </div>
+
+        {/* Color Presets */}
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-2">Chagua Palette ya Haraka (Preset Palettes)</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {presets.map(preset => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => handleApply(preset.primary, preset.accent, preset.accent2)}
+                className="p-3 bg-bg3/60 border border-theme hover:border-primary rounded-xl flex items-center justify-between text-left transition-all active:scale-98"
+              >
+                <div>
+                  <div className="font-bold text-xs text-text1">{preset.name}</div>
+                  <div className="text-[10px] text-text3">{preset.primary}</div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full shadow-xs" style={{ backgroundColor: preset.primary }} />
+                  <div className="w-4 h-4 rounded-full shadow-xs" style={{ backgroundColor: preset.accent }} />
+                  <div className="w-3.5 h-3.5 rounded-full shadow-xs" style={{ backgroundColor: preset.accent2 }} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Color Pickers */}
+        <form onSubmit={handleSaveCustom} className="pt-3 border-t border-theme space-y-3">
+          <div className="font-bold text-xs text-text1">Rangi Binafsi (Custom Hex Colors):</div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-bg3/50 p-3 rounded-xl border border-theme">
+              <label className="text-[11px] font-bold text-text3 uppercase block mb-1.5">Primary Color (Kuu)</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="color" 
+                  value={primaryColor} 
+                  onChange={e => setPrimaryColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                />
+                <input 
+                  type="text" 
+                  value={primaryColor} 
+                  onChange={e => setPrimaryColor(e.target.value)}
+                  className="flex-1 h-8 px-2 text-xs font-mono bg-bg border border-theme rounded-lg text-text1 uppercase"
+                />
+              </div>
+            </div>
+
+            <div className="bg-bg3/50 p-3 rounded-xl border border-theme">
+              <label className="text-[11px] font-bold text-text3 uppercase block mb-1.5">Accent Color 1</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="color" 
+                  value={accentColor} 
+                  onChange={e => setAccentColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                />
+                <input 
+                  type="text" 
+                  value={accentColor} 
+                  onChange={e => setAccentColor(e.target.value)}
+                  className="flex-1 h-8 px-2 text-xs font-mono bg-bg border border-theme rounded-lg text-text1 uppercase"
+                />
+              </div>
+            </div>
+
+            <div className="bg-bg3/50 p-3 rounded-xl border border-theme">
+              <label className="text-[11px] font-bold text-text3 uppercase block mb-1.5">Accent Color 2</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="color" 
+                  value={accent2Color} 
+                  onChange={e => setAccent2Color(e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                />
+                <input 
+                  type="text" 
+                  value={accent2Color} 
+                  onChange={e => setAccent2Color(e.target.value)}
+                  className="flex-1 h-8 px-2 text-xs font-mono bg-bg border border-theme rounded-lg text-text1 uppercase"
+                />
+              </div>
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isSaving}
+            className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
+          >
+            <Save size={15} />
+            {isSaving ? 'Inahifadhi...' : 'Hifadhi Rangi Binafsi'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export const UssdApkTab: React.FC = () => {
+  const { ussdSettings, updateUssdSettings } = useApp();
+  const [formData, setFormData] = useState<UssdSettings>(ussdSettings);
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setFormData(ussdSettings);
+  }, [ussdSettings]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    await updateUssdSettings(formData);
+    setIsSaving(false);
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+  };
+
+  return (
+    <div className="space-y-4">
+      {success && (
+        <div className="p-3 bg-ok/10 border border-ok/20 text-ok text-xs font-bold rounded-xl flex items-center gap-2">
+          <CheckCircle size={16} />
+          <span>USSD Push APK & Gateway settings updated successfully!</span>
+        </div>
+      )}
+
+      {/* APK Overview Card */}
+      <div className="bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-indigo-500/15 border border-ok/30 p-5 rounded-2xl space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-ok text-white flex items-center justify-center shadow-md">
+              <Radio size={20} />
+            </div>
+            <div>
+              <h3 className="font-heading font-black text-sm text-text1">USSD Push Automation APK Gateway</h3>
+              <p className="text-[11px] text-text3">Huwezesha simu ya Android kutuma USSD push ya moja kwa moja kwa wateja (M-Pesa / Tigo Pesa / Airtel Money)</p>
+            </div>
+          </div>
+          <span className={cn(
+            "px-2.5 py-1 text-[10px] font-black uppercase rounded-full border",
+            formData.enabled ? "bg-ok/20 text-ok border-ok/30" : "bg-err/20 text-err border-err/30"
+          )}>
+            {formData.enabled ? 'ACTIVE' : 'DISABLED'}
+          </span>
+        </div>
+
+        {formData.apkDownloadUrl && (
+          <div className="flex items-center gap-2 pt-1">
+            <a 
+              href={formData.apkDownloadUrl} 
+              target="_blank" 
+              rel="noreferrer"
+              className="h-9 px-4 bg-ok hover:bg-ok/90 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm active:scale-98 transition-all"
+            >
+              <Download size={14} />
+              Pakua APK Hapa ({formData.apkVersion || 'v2.4'})
+            </a>
+            <span className="text-[11px] text-text3 font-medium">Faili: {formData.apkName}</span>
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="bg-card border border-theme p-5 rounded-2xl space-y-4 shadow-sm">
+        <div className="flex items-center justify-between border-b border-theme pb-3">
+          <div className="font-bold text-sm text-text1 flex items-center gap-2">
+            <Smartphone size={16} className="text-primary" />
+            <span>USSD Push APK Configuration</span>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-text2">
+            <span>Washa USSD Push:</span>
+            <input 
+              type="checkbox" 
+              checked={formData.enabled} 
+              onChange={e => setFormData({ ...formData, enabled: e.target.checked })}
+              className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+            />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-bold text-text2 block mb-1">APK File Name (Jina la Faili)</label>
+            <input 
+              type="text" 
+              value={formData.apkName || ''} 
+              onChange={e => setFormData({ ...formData, apkName: e.target.value })}
+              placeholder="e.g. CodZnz_USSD_Gateway.apk"
+              className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-text2 block mb-1">APK Version</label>
+            <input 
+              type="text" 
+              value={formData.apkVersion || ''} 
+              onChange={e => setFormData({ ...formData, apkVersion: e.target.value })}
+              placeholder="e.g. 2.4.0"
+              className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-1">APK Download Link (Link ya Kupakua USSD APK)</label>
+          <input 
+            type="url" 
+            value={formData.apkDownloadUrl || ''} 
+            onChange={e => setFormData({ ...formData, apkDownloadUrl: e.target.value })}
+            placeholder="https://yoursite.com/downloads/ussd-push.apk"
+            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+          />
+          <p className="text-[10px] text-text3 mt-1">Weka direct download URL kwa ajili ya admin au agent simu ya SIM gateway kuipakua.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-bold text-text2 block mb-1">USSD Push Code Prefix</label>
+            <input 
+              type="text" 
+              value={formData.ussdPrefix || '*150*'} 
+              onChange={e => setFormData({ ...formData, ussdPrefix: e.target.value })}
+              placeholder="e.g. *150*00#"
+              className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-text2 block mb-1">Gateway Provider Name</label>
+            <input 
+              type="text" 
+              value={formData.gatewayProvider || ''} 
+              onChange={e => setFormData({ ...formData, gatewayProvider: e.target.value })}
+              placeholder="e.g. Vodacom / Tigo Pesa Gateway"
+              className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-text2 block mb-1">Webhook URL (Callback baada ya Malipo ya USSD)</label>
+          <input 
+            type="url" 
+            value={formData.webhookUrl || ''} 
+            onChange={e => setFormData({ ...formData, webhookUrl: e.target.value })}
+            placeholder="https://api.codznz.com/v1/ussd-callback"
+            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={isSaving}
+          className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
+        >
+          <Save size={15} />
+          {isSaving ? 'Inahifadhi...' : 'Hifadhi Mipangilio ya USSD Push APK'}
+        </button>
+      </form>
+    </div>
+  );
 };
 
 export const AnalyticsTab: React.FC = () => {
@@ -1195,9 +1933,519 @@ export const AnalyticsTab: React.FC = () => {
   );
 };
 
+export const BroadcastTab: React.FC = () => {
+  const { notifications, broadcastNotification, deleteNotification, deleteAllNotifications, lang } = useApp();
+
+  const [notifType, setNotifType] = useState<'text' | 'image_text' | 'image_only' | 'offer'>('offer');
+  const [title, setTitle] = useState('🔥 Punguzo Maalum la Mwisho wa Mwezi!');
+  const [message, setMessage] = useState('Tumia kuponi leo kupata punguzo la 50% kwenye masomo yote ya Fullstack na Python.');
+  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80');
+  const [offerCode, setOfferCode] = useState('CODZNZ50');
+  const [offerDiscount, setOfferDiscount] = useState('50% OFF');
+  const [actionText, setActionText] = useState('Tumia Ofa Sasa');
+  const [actionUrl, setActionUrl] = useState('#courses');
+  const [targetRole, setTargetRole] = useState<'all' | 'user' | 'developer' | 'admin'>('all');
+  const [sending, setSending] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(false);
+
+  const presets = [
+    {
+      label: '🔥 Ofa ya Punguzo 50%',
+      type: 'offer' as const,
+      title: '🔥 Ofa Maalum: 50% Punguzo la Masomo!',
+      message: 'Jipatie kozi zote za Pro kwa nusu bei. Tumia kuponi CODZNZ50 wakati wa kulipia.',
+      imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+      offerCode: 'CODZNZ50',
+      offerDiscount: '50% OFF',
+      actionText: 'Tazama Masomo',
+      actionUrl: '#courses'
+    },
+    {
+      label: '🚀 Tangazo la Masomo Mapya',
+      type: 'image_text' as const,
+      title: '📚 Masomo Mapya ya React & Node.js Yameongezwa!',
+      message: 'Tumeongeza sura mpya 10 za kujenga miradi halisi ya Fullstack. Anza kujifunza sasa.',
+      imageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80',
+      offerCode: '',
+      offerDiscount: '',
+      actionText: 'Fungua Maktaba',
+      actionUrl: '#library'
+    },
+    {
+      label: '🎨 Bango la Picha Pekee (Poster)',
+      type: 'image_only' as const,
+      title: '',
+      message: '',
+      imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
+      offerCode: '',
+      offerDiscount: '',
+      actionText: 'Tazama Shindano',
+      actionUrl: '#lb'
+    },
+    {
+      label: '⚡ Ujumbe wa Mfumo (Text Only)',
+      type: 'text' as const,
+      title: '⚡ Mfumo wa USSD Push Umeboreshwa!',
+      message: 'Sasa unaweza kulipia kupitia M-Pesa na Tigo Pesa papo hapo bila kuweka kumbukumbu kwa mkono.',
+      imageUrl: '',
+      offerCode: '',
+      offerDiscount: '',
+      actionText: 'Lipia Sasa',
+      actionUrl: '#pay'
+    }
+  ];
+
+  const handleApplyPreset = (p: typeof presets[0]) => {
+    setNotifType(p.type);
+    setTitle(p.title);
+    setMessage(p.message);
+    setImageUrl(p.imageUrl);
+    setOfferCode(p.offerCode);
+    setOfferDiscount(p.offerDiscount);
+    setActionText(p.actionText);
+    setActionUrl(p.actionUrl);
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (notifType !== 'image_only' && !title.trim() && !message.trim()) {
+      alert('Tafadhali weka kichwa cha habari au ujumbe!');
+      return;
+    }
+    if ((notifType === 'image_only' || notifType === 'image_text') && !imageUrl.trim()) {
+      alert('Tafadhali weka URL ya picha!');
+      return;
+    }
+
+    setSending(true);
+    const finalType = notifType === 'offer' ? 'offer' : notifType === 'image_only' ? 'image' : notifType === 'text' ? 'info' : 'update';
+
+    const ok = await broadcastNotification({
+      title: title.trim() || (notifType === 'image_only' ? 'Tangazo Jipya' : undefined),
+      message: message.trim() || undefined,
+      imageUrl: imageUrl.trim() || undefined,
+      type: finalType,
+      offerCode: offerCode.trim() || undefined,
+      offerDiscount: offerDiscount.trim() || undefined,
+      actionText: actionText.trim() || undefined,
+      actionUrl: actionUrl.trim() || undefined,
+      targetRole: targetRole
+    });
+
+    setSending(false);
+    if (ok) {
+      setSuccessMsg(true);
+      setTimeout(() => setSuccessMsg(false), 3000);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-primary/15 via-purple-500/10 to-amber-500/10 border border-theme p-5 rounded-3xl relative overflow-hidden">
+        <div className="flex items-center justify-between relative z-10 flex-wrap gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center font-bold">
+                <Bell size={18} />
+              </div>
+              <h2 className="text-base font-black text-text1">Broadcast & Notifications Studio</h2>
+            </div>
+            <p className="text-xs text-text3 max-w-md">
+              Tuma matangazo, ofa za punguzo, ujumbe wa maandishi, picha au mabango ya maboresho kwa watumiaji na watengenezaji wote.
+            </p>
+          </div>
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-card border border-theme text-xs font-bold text-text2 flex items-center gap-2">
+            <Radio size={14} className="text-ok animate-pulse" />
+            <span>{notifications.length} Taarifa Zilizopo</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Preset Selector */}
+      <div className="space-y-2">
+        <label className="text-[10px] uppercase font-black tracking-widest text-text3 px-1">
+          Sampuli za Haraka (Quick Presets)
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {presets.map((p, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleApplyPreset(p)}
+              className="p-3 bg-card hover:bg-bg3 border border-theme hover:border-primary/40 rounded-2xl text-left transition-all group"
+            >
+              <div className="font-bold text-xs text-text1 group-hover:text-primary transition-colors">
+                {p.label}
+              </div>
+              <div className="text-[10px] text-text3 mt-0.5 capitalize">
+                Aina: {p.type.replace('_', ' ')}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Broadcast Form (Left 7 cols) */}
+        <div className="lg:col-span-7 bg-card border border-theme p-5 rounded-3xl space-y-4 shadow-sm">
+          <h3 className="font-bold text-sm text-text1 flex items-center gap-2">
+            <Send size={16} className="text-primary" />
+            <span>Tunga Tangazo / Notification Mpya</span>
+          </h3>
+
+          <form onSubmit={handleSend} className="space-y-4">
+            {/* Notification Type Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                Aina ya Notification (Format)
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'offer', label: '🔥 Ofa & Punguzo', desc: 'Coupon + Picha' },
+                  { id: 'image_text', label: '🖼️ Picha + Maandishi', desc: 'Banner & Text' },
+                  { id: 'image_only', label: '🎨 Picha Pekee', desc: 'Poster Flyer' },
+                  { id: 'text', label: '💬 Maandishi Tu', desc: 'Quick Text' },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setNotifType(t.id as any)}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition-all",
+                      notifType === t.id 
+                        ? "bg-primary/10 border-primary text-primary font-bold shadow-xs" 
+                        : "bg-bg3 border-theme text-text2 hover:text-text1"
+                    )}
+                  >
+                    <div className="text-xs font-bold">{t.label}</div>
+                    <div className="text-[9px] text-text3 mt-0.5">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Audience */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                Walengwa (Target Audience)
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'all', label: 'Wote (All Users)' },
+                  { id: 'user', label: 'Wanafunzi Tu' },
+                  { id: 'developer', label: 'Developers Tu' },
+                  { id: 'admin', label: 'Admins Tu' },
+                ].map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setTargetRole(r.id as any)}
+                    className={cn(
+                      "flex-1 h-9 rounded-xl text-xs font-bold border transition-all",
+                      targetRole === r.id 
+                        ? "bg-primary text-white border-primary" 
+                        : "bg-bg3 border-theme text-text2 hover:text-text1"
+                    )}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Title (for non image_only) */}
+            {notifType !== 'image_only' && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                  Kichwa cha Habari (Title)
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Mfano: 🔥 Ofa ya Punguzo la 50%!"
+                  className="w-full h-11 px-3 bg-bg3 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
+            {/* Image URL (for image_text, image_only, offer) */}
+            {notifType !== 'text' && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                    URL ya Picha / Bango (Image URL)
+                  </label>
+                  <span className="text-[10px] text-text3">Unsplash au kiungo cha picha</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={e => setImageUrl(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full h-11 px-3 bg-bg3 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary"
+                    required={notifType === 'image_only'}
+                  />
+                  {imageUrl && (
+                    <div className="w-11 h-11 rounded-xl overflow-hidden border border-theme shrink-0 bg-bg3">
+                      <img src={imageUrl} alt="preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Message Body (for non image_only) */}
+            {notifType !== 'image_only' && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                  Maelezo / Ujumbe (Message Text)
+                </label>
+                <textarea
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  rows={3}
+                  placeholder="Andika maelezo kamili ya tangazo..."
+                  className="w-full p-3 bg-bg3 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary resize-none"
+                  required={notifType === 'text'}
+                />
+              </div>
+            )}
+
+            {/* Offer Specific Fields */}
+            {notifType === 'offer' && (
+              <div className="grid grid-cols-2 gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black tracking-wider text-amber-500">
+                    Kuponi ya Punguzo (Promo Code)
+                  </label>
+                  <input
+                    type="text"
+                    value={offerCode}
+                    onChange={e => setOfferCode(e.target.value.toUpperCase())}
+                    placeholder="CODZNZ50"
+                    className="w-full h-10 px-3 bg-card border border-amber-500/30 rounded-xl text-xs font-mono font-bold text-text1 outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black tracking-wider text-amber-500">
+                    Kiasi cha Punguzo (Badge)
+                  </label>
+                  <input
+                    type="text"
+                    value={offerDiscount}
+                    onChange={e => setOfferDiscount(e.target.value)}
+                    placeholder="50% OFF au BURE"
+                    className="w-full h-10 px-3 bg-card border border-amber-500/30 rounded-xl text-xs font-bold text-text1 outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action Button Link (CTA) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                  Maandishi ya Kitufe (Button Text)
+                </label>
+                <input
+                  type="text"
+                  value={actionText}
+                  onChange={e => setActionText(e.target.value)}
+                  placeholder="Mfano: Fungua Somo"
+                  className="w-full h-10 px-3 bg-bg3 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black tracking-wider text-text3">
+                  Kiungo cha Kitufe (Action Link / Target)
+                </label>
+                <input
+                  type="text"
+                  value={actionUrl}
+                  onChange={e => setActionUrl(e.target.value)}
+                  placeholder="#courses au https://..."
+                  className="w-full h-10 px-3 bg-bg3 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={sending}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Send size={15} />
+              <span>{sending ? 'Inatuma Tangazo...' : 'Tuma Notification Papo Hapo 🚀'}</span>
+            </button>
+
+            {successMsg && (
+              <div className="p-3 bg-ok/10 border border-ok/30 rounded-xl text-ok text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle size={15} />
+                <span>Notification imetumwa kwa watumiaji wote na kuonekana papo hapo!</span>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Live Real-time Card Preview (Right 5 cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-bold text-xs uppercase tracking-widest text-text3 flex items-center gap-1.5">
+              <Sparkles size={14} className="text-primary" />
+              <span>Muonekano wa Mtumiaji (Live Preview)</span>
+            </h3>
+            <span className="text-[10px] text-ok font-bold">Real-time</span>
+          </div>
+
+          {/* User Notification Card Preview */}
+          <div className="bg-card border-2 border-dashed border-primary/40 rounded-3xl p-4 space-y-3 shadow-md">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                {notifType === 'offer' ? (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 flex items-center gap-1">
+                    <Flame size={10} />
+                    <span>{offerDiscount || 'OFA MAALUM'}</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                    <Sparkles size={10} />
+                    <span>UPDATE</span>
+                  </span>
+                )}
+                <span className="text-[10px] text-text3">Hivi punde</span>
+              </div>
+              <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+            </div>
+
+            {title && (
+              <h4 className="font-bold text-sm text-text1 leading-snug">
+                {title}
+              </h4>
+            )}
+
+            {imageUrl && notifType !== 'text' && (
+              <div className="rounded-xl overflow-hidden border border-theme max-h-40 bg-bg3">
+                <img src={imageUrl} alt="preview" className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            {message && notifType !== 'image_only' && (
+              <p className="text-xs text-text2 leading-relaxed">
+                {message}
+              </p>
+            )}
+
+            {notifType === 'offer' && offerCode && (
+              <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
+                <div>
+                  <div className="text-[9px] uppercase font-black text-amber-500">Kuponi</div>
+                  <div className="font-mono font-black text-xs text-text1">{offerCode}</div>
+                </div>
+                <span className="h-7 px-2.5 bg-amber-500 text-white rounded-lg text-[10px] font-bold flex items-center">
+                  Nakili
+                </span>
+              </div>
+            )}
+
+            {(actionText || actionUrl) && (
+              <div className="pt-2 border-t border-theme flex justify-end">
+                <span className="h-7 px-3 rounded-lg bg-primary text-white text-[11px] font-bold flex items-center gap-1">
+                  <span>{actionText || 'Fungua'}</span>
+                  <ExternalLink size={11} />
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Slide Popup Toast Preview */}
+          <div className="space-y-1.5">
+            <div className="text-[10px] uppercase font-black tracking-widest text-text3 px-1">
+              Muonekano wa Slide Popup Toast
+            </div>
+            <div className="bg-card border border-primary/40 rounded-2xl p-3 shadow-lg flex items-center gap-3 relative overflow-hidden">
+              <div className="w-1 bg-primary absolute left-0 top-0 bottom-0" />
+              <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                <Bell size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] font-black uppercase text-primary">Taarifa Mpya</div>
+                <div className="font-bold text-xs text-text1 truncate">{title || 'Tangazo la Picha'}</div>
+                <div className="text-[10px] text-text3 truncate">{message || 'Bofya kutazama tangazo kamili'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sent Notifications List & Management */}
+      <div className="space-y-3 pt-4 border-t border-theme">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-xs uppercase tracking-widest text-text3 flex items-center gap-2">
+            <Layers size={14} className="text-primary" />
+            <span>Orodha ya Notifications Zilizopo ({notifications.length})</span>
+          </h3>
+
+          {notifications.length > 0 && (
+            <button
+              onClick={() => {
+                if (confirm('Je, una uhakika unataka kufuta taarifa zote zilizopo?')) {
+                  deleteAllNotifications();
+                }
+              }}
+              className="h-8 px-3 rounded-xl bg-err/10 hover:bg-err/20 text-err border border-err/20 text-xs font-bold flex items-center gap-1.5 transition-all"
+            >
+              <Trash2 size={13} />
+              <span>Futa Zote (Clear All)</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {notifications.map(notif => (
+            <div key={notif.id} className="bg-card border border-theme rounded-2xl p-3.5 flex items-start justify-between gap-3 shadow-xs">
+              <div className="space-y-1 flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-primary/10 text-primary">
+                    {notif.type}
+                  </span>
+                  <span className="text-[10px] text-text3">{new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <h4 className="font-bold text-xs text-text1 truncate">{notif.title || '(Picha/Poster)'}</h4>
+                {notif.message && <p className="text-[11px] text-text3 line-clamp-2">{notif.message}</p>}
+                {notif.imageUrl && (
+                  <span className="text-[10px] text-primary flex items-center gap-1 font-bold">
+                    <ImageIcon size={11} />
+                    <span>Ina Picha</span>
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={() => deleteNotification(notif.id)}
+                className="w-8 h-8 rounded-xl bg-bg3 hover:bg-err/10 text-text3 hover:text-err border border-theme flex items-center justify-center transition-colors shrink-0"
+                title="Futa"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const AdminPage: React.FC = () => {
-  const { orders } = useApp();
-  const [tab, setTab] = useState<'analytics' | 'orders' | 'content' | 'apps' | 'banners' | 'users' | 'developer'>('analytics');
+  const { orders, notifications } = useApp();
+  const [tab, setTab] = useState<'analytics' | 'orders' | 'broadcast' | 'branding' | 'theme' | 'ussd_apk' | 'users' | 'content' | 'apps' | 'banners' | 'developer'>('analytics');
   const [pendingCount, setPendingCount] = useState(() => orders.filter(o => o.status === 'pending').length);
 
   useEffect(() => {
@@ -1222,10 +2470,14 @@ export const AdminPage: React.FC = () => {
   const tabs = [
     { id: 'analytics', label: 'Overview', icon: BarChart3 },
     { id: 'orders', label: 'Orders', icon: ShoppingCart, badge: pendingCount },
+    { id: 'broadcast', label: 'Notifications & Broadcast', icon: Bell, badge: notifications.filter(n => !n.read).length },
+    { id: 'branding', label: 'Website & Logo', icon: Globe },
+    { id: 'theme', label: 'System Colors', icon: Palette },
+    { id: 'ussd_apk', label: 'USSD Push APK', icon: Radio },
+    { id: 'users', label: 'Users & Developers', icon: UserIcon },
     { id: 'content', label: 'Content', icon: BookOpen },
     { id: 'apps', label: 'Apps', icon: Bolt },
     { id: 'banners', label: 'Banners', icon: Trophy },
-    { id: 'users', label: 'Users', icon: UserIcon },
     { id: 'developer', label: 'Developer Console', icon: Code2 },
   ];
 
@@ -1258,6 +2510,10 @@ export const AdminPage: React.FC = () => {
       <div className="pb-10">
         {tab === 'analytics' && <AnalyticsTab />}
         {tab === 'orders' && <OrdersTab />}
+        {tab === 'broadcast' && <BroadcastTab />}
+        {tab === 'branding' && <BrandingTab />}
+        {tab === 'theme' && <ThemeTab />}
+        {tab === 'ussd_apk' && <UssdApkTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'content' && <ContentTab />}
         {tab === 'apps' && <AppsTab />}

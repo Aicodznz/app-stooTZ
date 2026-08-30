@@ -288,19 +288,43 @@ export const SEED_REVIEWS: Review[] = [
 export const SEED_NOTIFICATIONS: AppNotification[] = [
   {
     id: 'n1',
-    title: 'Karibu CodZnz Pro! 🎉',
-    message: 'Gundua masomo mapya, mitihani, na programu za bure kuanza safari yako ya TEHAMA.',
-    type: 'success',
-    createdAt: Date.now() - 3600000 * 2,
+    title: '🔥 Ofa Maalum: 50% Punguzo la Masomo!',
+    message: 'Tumia kuponi CODZNZ50 kupata punguzo la 50% kwenye masomo yote ya Fullstack & Python mwezi huu.',
+    type: 'offer',
+    offerCode: 'CODZNZ50',
+    offerDiscount: '50% OFF',
+    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+    actionText: 'Tumia Ofa Sasa',
+    actionUrl: '#courses',
+    createdAt: Date.now() - 3600000 * 1,
     read: false
   },
   {
     id: 'n2',
-    title: 'Mfumo Mpya wa Malipo ⚡',
-    message: 'Sasa unaweza kulipia kozi kupitia Vodacom M-Pesa, Tigo Pesa na Airtel Money kwa njia rahisi.',
-    type: 'info',
+    title: 'Karibu CodZnz Pro! 🎉',
+    message: 'Gundua masomo mapya, mitihani, na programu za bure kuanza safari yako ya TEHAMA na kupata vyeti rasmi.',
+    type: 'success',
+    createdAt: Date.now() - 3600000 * 5,
+    read: false
+  },
+  {
+    id: 'n3',
+    title: '🚀 Shindano la Developer & Coding XP',
+    message: 'Weka App yako kwenye Developer Studio au kamilisha mitihani 3 ili kupata pointi 500 za bure na kuingia Top 10 Leaderboard!',
+    type: 'update',
+    imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
+    actionText: 'Tazama Nafasi',
+    actionUrl: '#lb',
     createdAt: Date.now() - 86400000,
     read: false
+  },
+  {
+    id: 'n4',
+    title: '⚡ Mfumo Mpya wa Malipo & USSD Push',
+    message: 'Sasa unaweza kulipia kozi papo hapo kupitia Vodacom M-Pesa, Tigo Pesa na Airtel Money kwa njia rahisi.',
+    type: 'info',
+    createdAt: Date.now() - 86400000 * 2,
+    read: true
   }
 ];
 

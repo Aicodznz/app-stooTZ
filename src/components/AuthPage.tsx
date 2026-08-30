@@ -8,22 +8,22 @@ import {
   GoogleAuthProvider
 } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { 
   Mail, 
   Lock, 
   User as UserIcon, 
   ArrowRight, 
-  Chrome, 
   Phone, 
   Eye, 
   EyeOff, 
-  CheckCircle2, 
   Sparkles, 
   ShieldCheck, 
   Award, 
   Terminal,
-  Code2
+  Code2,
+  AtSign,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -34,8 +34,9 @@ interface AuthPageProps {
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch, onSuccess }) => {
-  const { lang } = useApp();
+  const { lang, users } = useApp();
   const [currentMode, setCurrentMode] = useState<'login' | 'register'>(initialMode);
+  const [identifier, setIdentifier] = useState(''); // Email, Name, or Phone in login mode
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -49,6 +50,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
   useEffect(() => {
     setCurrentMode(initialMode);
   }, [initialMode]);
+
+  // Dynamic icon detection for the login identifier input
+  const getIdentifierIcon = () => {
+    if (identifier.includes('@')) return <Mail className="text-primary" size={17} />;
+    if (identifier.replace(/[^0-9+]/g, '').length >= 5 && /^[0-9+\s()-]+$/.test(identifier)) {
+      return <Phone className="text-emerald-500" size={17} />;
+    }
+    if (identifier.length > 0) return <UserIcon className="text-purple-500" size={17} />;
+    return <AtSign className="text-text3" size={17} />;
+  };
 
   // Password strength calculation
   const getPasswordStrength = () => {
@@ -74,6 +85,91 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
     }
   };
 
+  // Helper function to resolve target email when user provides Name or Phone
+  const resolveTargetEmail = async (input: string): Promise<string | null> => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // 1. If it's already an email
+    if (trimmed.includes('@')) {
+      return trimmed.toLowerCase();
+    }
+
+    const cleanInput = trimmed.toLowerCase();
+    const digitsOnly = trimmed.replace(/[^0-9]/g, '');
+
+    // 2. Check in-memory / local storage users list first (ultra-fast)
+    const localUsers = [...(users || [])];
+    try {
+      const stored = localStorage.getItem('czp_users');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) localUsers.push(...parsed);
+      }
+      const myProfile = localStorage.getItem('czp_profile');
+      if (myProfile) {
+        const parsedP = JSON.parse(myProfile);
+        if (parsedP?.email) localUsers.push(parsedP);
+      }
+    } catch (e) {
+      console.warn('Local users lookup note:', e);
+    }
+
+    const localMatch = localUsers.find(u => {
+      const uName = (u.name || '').trim().toLowerCase();
+      const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+      const rawPhone = (u.phone || '').trim();
+      return (
+        uName === cleanInput ||
+        (rawPhone && rawPhone === trimmed) ||
+        (digitsOnly && uPhone && (uPhone.endsWith(digitsOnly) || digitsOnly.endsWith(uPhone)))
+      );
+    });
+
+    if (localMatch && localMatch.email) {
+      return localMatch.email.toLowerCase();
+    }
+
+    // 3. Query Firestore users collection by name or phone
+    try {
+      // Query by phone
+      const phoneQ = query(collection(db, 'users'), where('phone', '==', trimmed));
+      const phoneSnap = await getDocs(phoneQ);
+      if (!phoneSnap.empty) {
+        const docData = phoneSnap.docs[0].data();
+        if (docData.email) return docData.email.toLowerCase();
+      }
+
+      // Query by name
+      const nameQ = query(collection(db, 'users'), where('name', '==', trimmed));
+      const nameSnap = await getDocs(nameQ);
+      if (!nameSnap.empty) {
+        const docData = nameSnap.docs[0].data();
+        if (docData.email) return docData.email.toLowerCase();
+      }
+
+      // If phone digits provided (e.g. user entered 0712... while db has +255712...)
+      if (digitsOnly.length >= 6) {
+        const allUsersSnap = await getDocs(collection(db, 'users'));
+        for (const uDoc of allUsersSnap.docs) {
+          const data = uDoc.data();
+          const dPhone = (data.phone || '').replace(/[^0-9]/g, '');
+          const dName = (data.name || '').trim().toLowerCase();
+          if (
+            (dPhone && (dPhone.endsWith(digitsOnly) || digitsOnly.endsWith(dPhone))) ||
+            dName === cleanInput
+          ) {
+            if (data.email) return data.email.toLowerCase();
+          }
+        }
+      }
+    } catch (fsErr) {
+      console.warn('Firestore user query fallback:', fsErr);
+    }
+
+    return null;
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -87,13 +183,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
 
     try {
       if (currentMode === 'register') {
-        const res = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(res.user, { displayName: name });
-        await setDoc(doc(db, 'users', res.user.uid), {
+        const targetEmail = email.trim().toLowerCase();
+        const res = await createUserWithEmailAndPassword(auth, targetEmail, password);
+        
+        try {
+          await updateProfile(res.user, { displayName: name.trim() });
+        } catch (profileErr) {
+          console.warn('Profile update error:', profileErr);
+        }
+
+        const newUserDoc = {
           uid: res.user.uid,
-          name: name || email.split('@')[0],
-          email: email,
-          phone: phone || '',
+          name: name.trim() || targetEmail.split('@')[0],
+          email: targetEmail,
+          phone: phone.trim() || '',
           accountType: role,
           points: 150, // Welcome bonus points
           streak: 1,
@@ -101,20 +204,59 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
           createdAt: Date.now(),
           library: {},
           progress: {},
-          status: 'Active'
-        });
+          status: 'Active' as const
+        };
+
+        try {
+          await setDoc(doc(db, 'users', res.user.uid), newUserDoc);
+        } catch (dbErr) {
+          console.warn('Firestore user doc creation notice (fallback to local state):', dbErr);
+        }
+
+        // Cache user info locally for future phone/name logins
+        try {
+          const stored = localStorage.getItem('czp_users');
+          const existing = stored ? JSON.parse(stored) : [];
+          localStorage.setItem('czp_users', JSON.stringify([...existing, newUserDoc]));
+          localStorage.setItem('czp_profile', JSON.stringify(newUserDoc));
+        } catch (e) {
+          console.warn('Local storage cache note:', e);
+        }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        // LOGIN FLOW: Support Email, Name, or Phone
+        let targetEmail: string | null = null;
+
+        if (identifier.includes('@')) {
+          targetEmail = identifier.trim().toLowerCase();
+        } else {
+          targetEmail = await resolveTargetEmail(identifier);
+          if (!targetEmail) {
+            setError(
+              lang === 'en' 
+                ? `No account found for "${identifier}". Please check the spelling or enter your registered email address.`
+                : `Akaunti yenye "${identifier}" haikupatikana. Tafadhali hakikisha jina au namba ya simu, au tumia barua pepe yako (Email).`
+            );
+            setLoading(false);
+            return;
+          }
+        }
+
+        await signInWithEmailAndPassword(auth, targetEmail, password);
       }
+
       onSuccess();
     } catch (err: any) {
       let msg = err.message || '';
       if (msg.includes('auth/user-not-found') || msg.includes('auth/wrong-password') || msg.includes('auth/invalid-credential')) {
-        msg = lang === 'en' ? 'Incorrect email or password' : 'Barua pepe au nenosiri si sahihi';
+        msg = lang === 'en' ? 'Incorrect login details or password' : 'Taarifa za kuingia au nenosiri si sahihi';
       } else if (msg.includes('auth/email-already-in-use')) {
         msg = lang === 'en' ? 'This email is already registered. Please login.' : 'Barua pepe hii tayari imesajiliwa. Tafadhali ingia.';
       } else if (msg.includes('auth/weak-password')) {
         msg = lang === 'en' ? 'Password must be at least 6 characters' : 'Nenosiri linapaswa kuwa na angalau herufi 6';
+      } else if (msg.includes('permission-denied') || msg.includes('insufficient permissions')) {
+        // If auth succeeded but firestore rule caught it
+        onSuccess();
+        return;
       }
       setError(msg);
     } finally {
@@ -160,8 +302,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
         </h2>
         <p className="text-xs text-text3 font-medium px-4">
           {currentMode === 'login' 
-            ? (lang === 'en' ? 'Welcome back! Sign in to access your courses and apps.' : 'Karibu tena! Ingia ili ufikie masomo na zana zako.')
-            : (lang === 'en' ? 'Create an account to start coding and publishing projects.' : 'Fungua akaunti ya bure uanze kujifunza na kuchapisha masomo au programu.')}
+            ? (lang === 'en' ? 'Sign in with your Email, Username, or Phone number.' : 'Ingia kwa Barua Pepe, Jina la Mtumiaji, au Namba ya Simu.')
+            : (lang === 'en' ? 'Create an account to start coding, learning, and publishing.' : 'Fungua akaunti ya bure uanze kujifunza na kuchapisha masomo au programu.')}
         </p>
       </div>
 
@@ -232,13 +374,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-x-0 h-px bg-theme" />
           <span className="relative z-10 bg-card px-3 text-[10px] font-black text-text3 uppercase tracking-widest">
-            {lang === 'en' ? 'Or with email' : 'Au kwa barua pepe'}
+            {currentMode === 'login'
+              ? (lang === 'en' ? 'Or with Email / Name / Phone' : 'Au kwa Email, Jina au Simu')
+              : (lang === 'en' ? 'Or create with details' : 'Au jaza taarifa zako')}
           </span>
         </div>
 
         {/* Input Form */}
         <form onSubmit={handleAuth} className="space-y-3.5">
-          {currentMode === 'register' && (
+          {currentMode === 'login' ? (
+            /* Flexible Login Input: Email, Username, or Phone Number */
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text3 uppercase tracking-wider block px-0.5">
+                {lang === 'en' ? 'Email, Username or Phone' : 'Barua Pepe, Jina au Namba ya Simu'}
+              </label>
+              <div className="relative">
+                <div className="absolute left-3.5 top-3">
+                  {getIdentifierIcon()}
+                </div>
+                <input 
+                  type="text" 
+                  placeholder={lang === 'en' ? 'Email, Name or Phone (e.g. 0712...)' : 'Barua pepe, Jina au Namba (Mf. 0712...)'}
+                  value={identifier}
+                  onChange={e => setIdentifier(e.target.value)}
+                  className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
+                  required
+                />
+              </div>
+            </div>
+          ) : (
+            /* Registration Inputs */
             <>
               {/* Account Type Selection */}
               <div>
@@ -276,47 +441,65 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
               </div>
 
               {/* Full Name */}
-              <div className="relative">
-                <UserIcon className="absolute left-3.5 top-3 text-text3" size={17} />
-                <input 
-                  type="text" 
-                  placeholder={lang === 'en' ? 'Full Name' : 'Jina Kamili (Mf. Juma Ally)'}
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
-                  required
-                />
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text3 uppercase tracking-wider block px-0.5">
+                  {lang === 'en' ? 'Full Name (For Certificates & Login)' : 'Jina Kamili (La Cheti na Kuingilia)'}
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3.5 top-3 text-text3" size={17} />
+                  <input 
+                    type="text" 
+                    placeholder={lang === 'en' ? 'Full Name (e.g. Ally Hamisi)' : 'Jina Kamili (Mf. Ally Hamisi)'}
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
+                    required
+                  />
+                </div>
               </div>
 
-              {/* Phone (Optional for M-Pesa notifications) */}
-              <div className="relative">
-                <Phone className="absolute left-3.5 top-3 text-text3" size={17} />
-                <input 
-                  type="tel" 
-                  placeholder={lang === 'en' ? 'Phone (e.g. 0712345678)' : 'Namba ya Simu ya M-Pesa / Tigo'}
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
-                />
+              {/* Phone (For M-Pesa notifications and Login) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text3 uppercase tracking-wider block px-0.5">
+                  {lang === 'en' ? 'Phone Number (For M-Pesa & Login)' : 'Namba ya Simu (M-Pesa na Kuingilia)'}
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-3 text-text3" size={17} />
+                  <input 
+                    type="tel" 
+                    placeholder={lang === 'en' ? 'Phone (e.g. 0712345678)' : 'Namba ya Simu (Mf. 0712345678)'}
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text3 uppercase tracking-wider block px-0.5">
+                  {lang === 'en' ? 'Email Address' : 'Barua Pepe'}
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-3 text-text3" size={17} />
+                  <input 
+                    type="email" 
+                    placeholder={lang === 'en' ? 'Email Address' : 'Barua Pepe (email@domain.com)'}
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
+                    required
+                  />
+                </div>
               </div>
             </>
           )}
 
-          {/* Email */}
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-3 text-text3" size={17} />
-            <input 
-              type="email" 
-              placeholder={lang === 'en' ? 'Email Address' : 'Barua Pepe (email@domain.com)'}
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full h-11 pl-10 pr-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-all placeholder:text-text3"
-              required
-            />
-          </div>
-
           {/* Password */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-text3 uppercase tracking-wider block px-0.5">
+              {lang === 'en' ? 'Password' : 'Nenosiri'}
+            </label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-3 text-text3" size={17} />
               <input 
@@ -338,7 +521,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
 
             {/* Strength indicator on register */}
             {currentMode === 'register' && password && (
-              <div className="flex items-center justify-between px-1">
+              <div className="flex items-center justify-between px-1 pt-1">
                 <div className="flex gap-1 w-24">
                   {[1, 2, 3].map(lvl => (
                     <div 

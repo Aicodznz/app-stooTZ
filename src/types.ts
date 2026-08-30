@@ -1,7 +1,28 @@
 export type Category = 'courses' | 'tests' | 'lectures';
-export type UserRole = 'guest' | 'user' | 'admin';
+export type UserRole = 'guest' | 'user' | 'developer' | 'admin';
 export type OrderStatus = 'pending' | 'confirmed' | 'rejected';
 export type PaymentMethod = 'mpesa' | 'tigopesa' | 'airtel' | 'halopesa' | 'card';
+
+export interface SiteSettings {
+  siteName: string;
+  siteTagline?: string;
+  logoUrl?: string;
+  logoEmoji?: string;
+  primaryColor: string;
+  accentColor: string;
+  accent2Color?: string;
+}
+
+export interface UssdSettings {
+  enabled: boolean;
+  apkDownloadUrl?: string;
+  apkVersion?: string;
+  apkName?: string;
+  ussdPrefix?: string;
+  autoPushEnabled?: boolean;
+  webhookUrl?: string;
+  gatewayProvider?: string;
+}
 
 export interface AppScreenshot {
   type: 'base64' | 'url';
@@ -82,6 +103,10 @@ export interface UserProfile {
   uid: string;
   name: string;
   email: string;
+  phone?: string;
+  photoURL?: string;
+  avatarUrl?: string;
+  accountType?: 'student' | 'creator' | 'developer' | 'admin';
   points: number;
   streak: number;
   lastLogin: number;
@@ -142,9 +167,15 @@ export interface Discussion {
 
 export interface AppNotification {
   id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'alert';
+  title?: string;
+  message?: string;
+  imageUrl?: string;
+  type: 'info' | 'success' | 'alert' | 'offer' | 'update' | 'image';
+  offerCode?: string;
+  offerDiscount?: string;
+  actionUrl?: string;
+  actionText?: string;
+  targetRole?: 'all' | 'user' | 'developer' | 'admin';
   createdAt: number;
   read?: boolean;
 }

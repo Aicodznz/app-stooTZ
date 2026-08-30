@@ -16,7 +16,8 @@ import {
   ShoppingCart, 
   Sun, 
   Moon, 
-  Languages 
+  Languages,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -29,6 +30,8 @@ import { CartPage } from './components/CartPage';
 import { AuthPage } from './components/AuthPage';
 import { PaymentPage } from './components/PaymentPage';
 import { DeveloperPanel } from './components/DeveloperPanel';
+import { NotificationsPage } from './components/NotificationsPage';
+import { NotificationSlideToast } from './components/NotificationSlideToast';
 import { AppDetailOverlay, BuyModal, QuizOverlay } from './components/Overlays';
 import { VideoPlayerOverlay, PDFViewerOverlay } from './components/MediaOverlays';
 import { CertificateOverlay } from './components/CertificateOverlay';
@@ -37,10 +40,10 @@ import { db } from './services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Code2 } from 'lucide-react';
 
-type PageID = 'home' | 'dash' | 'lib' | 'cart' | 'pay' | 'lb' | 'adm' | 'login' | 'reg' | 'register' | 'dev';
+type PageID = 'home' | 'dash' | 'lib' | 'cart' | 'pay' | 'lb' | 'adm' | 'login' | 'reg' | 'register' | 'dev' | 'notif' | 'notifications';
 
 function AppContent() {
-  const { theme, setTheme, lang, setLang, cart, user, isAdm, logout, apps, courses, tests, lectures, addToCart, lib, profile, pts } = useApp();
+  const { theme, setTheme, lang, setLang, cart, user, isAdm, logout, apps, courses, tests, lectures, addToCart, lib, profile, pts, siteSettings, notifications } = useApp();
   const [activePage, setActivePage] = useState<PageID>('home');
   const [selectedApp, setSelectedApp] = useState<CodApp | null>(null);
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
@@ -50,12 +53,13 @@ function AppContent() {
   const [pdfItem, setPdfItem] = useState<ContentItem | null>(null);
   const [certData, setCertData] = useState<{ title: string; score: number } | null>(null);
 
+  const unreadNotifsCount = notifications ? notifications.filter(n => !n.read).length : 0;
+
   const navItems = [
     { id: 'home', icon: Compass, label: { en: 'Explore', sw: 'Gundua' } },
     { id: 'lib', icon: Book, label: { en: 'Library', sw: 'Maktaba' } },
     { id: 'dash', icon: Bolt, label: { en: 'Dash', sw: 'Dash' }, isFab: true },
     { id: 'lb', icon: Trophy, label: { en: 'Rankings', sw: 'Vyeo' } },
-    { id: 'adm', icon: Settings, label: { en: 'Admin', sw: 'Admin' }, adminOnly: true },
   ];
 
   const handleOpenApp = (id: string) => {
@@ -99,6 +103,8 @@ function AppContent() {
       case 'dash': return <DashboardPage onNavigate={setActivePage} onOpenContent={handleOpenContent} />;
       case 'lib': return <LibraryPage onOpenContent={handleOpenContent} />;
       case 'lb': return <LeaderboardPage />;
+      case 'notif':
+      case 'notifications': return <NotificationsPage onBack={() => setActivePage('home')} onNavigate={(p) => setActivePage(p as PageID)} />;
       case 'adm': return isAdm ? <AdminPage /> : <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} />;
       case 'dev': return <DeveloperPanel onClose={() => setActivePage('home')} />;
       case 'cart': return <CartPage onCheckout={() => setActivePage(user ? 'pay' : 'login')} />;
@@ -116,29 +122,40 @@ function AppContent() {
       <header className="fixed top-0 left-0 right-0 h-[62px] bg-topbg backdrop-blur-xl border-b border-theme z-50 shadow-xs">
         <div className="w-full max-w-lg mx-auto h-full px-3.5 sm:px-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActivePage('home')}>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-glow-sm">
-              <span className="text-white font-black text-sm">C</span>
-            </div>
+            {siteSettings?.logoUrl ? (
+              <div className="w-8 h-8 rounded-xl overflow-hidden border border-theme shadow-glow-sm bg-card">
+                <img src={siteSettings.logoUrl} alt="Site Logo" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-glow-sm">
+                <span className="text-white font-black text-sm">{siteSettings?.logoEmoji || 'C'}</span>
+              </div>
+            )}
             <div className="flex flex-col">
               <h1 className="text-base font-black font-heading leading-tight tracking-tight text-text1">
-                CodZnz <span className="text-primary font-bold text-xs bg-primary/10 px-1.5 py-0.5 rounded-md ml-0.5">PRO</span>
+                {siteSettings?.siteName || 'CodZnz Pro'} <span className="text-primary font-bold text-xs bg-primary/10 px-1.5 py-0.5 rounded-md ml-0.5">PRO</span>
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Notification Bell with Popup navigation & Badge */}
             <button 
-              onClick={() => setActivePage(activePage === 'dev' ? 'home' : 'dev')} 
+              onClick={() => setActivePage('notif')}
               className={cn(
-                "h-8 px-2 flex items-center justify-center rounded-xl transition-all text-xs font-bold gap-1 border",
-                activePage === 'dev'
-                  ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
-                  : "hover:bg-card2 text-text2 hover:text-text1 border-theme"
+                "w-8 h-8 flex items-center justify-center rounded-xl transition-colors relative",
+                activePage === 'notif' || activePage === 'notifications'
+                  ? "bg-primary text-white shadow-md shadow-primary/30"
+                  : "hover:bg-card2 text-text2 hover:text-text1"
               )}
-              title="Developer Panel"
+              title={lang === 'en' ? 'Notifications & Offers' : 'Taarifa na Ofa'}
             >
-              <Code2 size={14} className={activePage === 'dev' ? "animate-pulse" : ""} />
-              <span className="text-[10px] font-black uppercase hidden xs:inline">DEV</span>
+              <Bell size={17} />
+              {unreadNotifsCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-black border-2 border-theme animate-bounce">
+                  {unreadNotifsCount}
+                </span>
+              )}
             </button>
 
             <button 
@@ -174,10 +191,18 @@ function AppContent() {
             {user ? (
               <div 
                 onClick={() => setActivePage('dash')}
-                className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-xs text-white font-black cursor-pointer shadow-sm hover:scale-105 transition-transform"
-                title="Dashboard"
+                className="w-8 h-8 rounded-xl overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-xs text-white font-black cursor-pointer shadow-sm hover:scale-105 transition-transform border border-white/20"
+                title="Dashboard / Profile"
               >
-                {user.email?.[0].toUpperCase()}
+                {profile?.photoURL || profile?.avatarUrl || user.photoURL ? (
+                  <img 
+                    src={profile?.photoURL || profile?.avatarUrl || user.photoURL || ''} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  (profile?.name || user.displayName || user.email || 'U')[0].toUpperCase()
+                )}
               </div>
             ) : (
               <button 
@@ -191,6 +216,9 @@ function AppContent() {
           </div>
         </div>
       </header>
+
+      {/* Slide Toast Notification for real-time alerts */}
+      <NotificationSlideToast onOpenNotifications={() => setActivePage('notif')} />
 
       {/* Main Body */}
       <main className="flex-1 w-full max-w-lg mx-auto pt-[74px] pb-[112px] px-3.5 sm:px-4">
@@ -211,7 +239,6 @@ function AppContent() {
       <nav className="fixed bottom-0 left-0 right-0 h-[68px] bg-navbg backdrop-blur-xl border-t border-theme z-50 shadow-lg">
         <div className="w-full max-w-lg mx-auto h-full px-2 flex items-center justify-around">
           {navItems.map((item) => {
-            if (item.adminOnly && !isAdm) return null;
             const Icon = item.icon;
             const isActive = activePage === item.id;
             if (item.isFab) {

@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, ADMIN_EMAIL } from '../services/firebase';
-import { UserProfile, ContentItem, CodApp, Banner, Order, Review, Discussion, AppNotification } from '../types';
+import { UserProfile, ContentItem, CodApp, Banner, Order, Review, Discussion, AppNotification, SiteSettings, UssdSettings } from '../types';
 import { 
   SEED_COURSES, 
   SEED_TESTS, 
@@ -14,6 +14,27 @@ import {
   SEED_DISCUSSIONS,
   SEED_ORDERS
 } from '../constants';
+
+const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  siteName: 'CodZnz Pro',
+  siteTagline: 'Tanzania #1 Coding Education Platform',
+  logoUrl: '',
+  logoEmoji: '⚡',
+  primaryColor: '#4F46E5',
+  accentColor: '#7C3AED',
+  accent2Color: '#EC4899',
+};
+
+const DEFAULT_USSD_SETTINGS: UssdSettings = {
+  enabled: true,
+  apkName: 'CodZnz_USSD_Push_Gateway_v2.4.apk',
+  apkVersion: '2.4.0',
+  apkDownloadUrl: 'https://github.com/codznz/ussd-push-apk/releases/download/v2.4.0/CodZnz_USSD_Gateway.apk',
+  ussdPrefix: '*150*',
+  autoPushEnabled: true,
+  webhookUrl: 'https://api.codznz.com/v1/ussd-callback',
+  gatewayProvider: 'Vodacom / Tigo / Airtel SIM Push Gateway'
+};
 
 interface AppState {
   user: User | null;
@@ -37,6 +58,8 @@ interface AppState {
   lib: Record<string, boolean>;
   pts: number;
   strk: number;
+  siteSettings: SiteSettings;
+  ussdSettings: UssdSettings;
 }
 
 interface AppContextType extends AppState {
@@ -52,17 +75,26 @@ interface AppContextType extends AppState {
   toggleEpisodeComplete: (itemId: string, epIdx: number) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  deleteNotification: (id: string) => void;
+  deleteAllNotifications: () => void;
+  addNotification: (notification: Omit<AppNotification, 'id' | 'createdAt'>) => void;
+  broadcastNotification: (notification: Omit<AppNotification, 'id' | 'createdAt'>) => Promise<boolean>;
   createOrder: (orderData: Omit<Order, 'id' | 'createdAt'>) => Promise<string>;
   approveOrder: (orderId: string) => void;
   rejectOrder: (orderId: string) => void;
   giveUserAccess: (userEmailOrUid: string, itemId: string) => void;
   revokeUserAccess: (userEmailOrUid: string, itemId: string) => void;
   addPoints: (amount: number) => void;
+  updateUserProfile: (data: Partial<UserProfile>) => Promise<boolean>;
+  updateUserByAdmin: (uid: string, data: Partial<UserProfile>) => Promise<boolean>;
+  deleteUserByAdmin: (uid: string) => Promise<boolean>;
   updateCourses: (courses: ContentItem[]) => void;
   updateTests: (tests: ContentItem[]) => void;
   updateLectures: (lectures: ContentItem[]) => void;
   updateApps: (apps: CodApp[]) => void;
   updateBanners: (banners: Banner[]) => void;
+  updateSiteSettings: (settings: Partial<SiteSettings>) => Promise<boolean>;
+  updateUssdSettings: (settings: Partial<UssdSettings>) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -115,7 +147,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     lib: JSON.parse(localStorage.getItem('czp_local_lib') || '{}'),
     pts: Number(localStorage.getItem('czp_pts') || '150'),
     strk: Number(localStorage.getItem('czp_strk') || '2'),
+    siteSettings: JSON.parse(localStorage.getItem('czp_site_settings') || 'null') || DEFAULT_SITE_SETTINGS,
+    ussdSettings: JSON.parse(localStorage.getItem('czp_ussd_settings') || 'null') || DEFAULT_USSD_SETTINGS,
   });
+
+  // Dynamic CSS variables for primary and accent brand colors
+  useEffect(() => {
+    if (state.siteSettings.primaryColor) {
+      document.documentElement.style.setProperty('--color-primary', state.siteSettings.primaryColor);
+      document.documentElement.style.setProperty('--p', state.siteSettings.primaryColor);
+    }
+    if (state.siteSettings.accentColor) {
+      document.documentElement.style.setProperty('--color-accent', state.siteSettings.accentColor);
+      document.documentElement.style.setProperty('--ac', state.siteSettings.accentColor);
+    }
+    if (state.siteSettings.accent2Color) {
+      document.documentElement.style.setProperty('--color-accent-2', state.siteSettings.accent2Color);
+      document.documentElement.style.setProperty('--ac2', state.siteSettings.accent2Color);
+    }
+  }, [state.siteSettings.primaryColor, state.siteSettings.accentColor, state.siteSettings.accent2Color]);
+
+  useEffect(() => {
+    localStorage.setItem('czp_site_settings', JSON.stringify(state.siteSettings));
+  }, [state.siteSettings]);
+
+  useEffect(() => {
+    localStorage.setItem('czp_ussd_settings', JSON.stringify(state.ussdSettings));
+  }, [state.ussdSettings]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', state.theme);
@@ -281,6 +339,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   };
 
+  const deleteNotification = (id: string) => {
+    setState(p => ({
+      ...p,
+      notifications: p.notifications.filter(n => n.id !== id)
+    }));
+  };
+
+  const deleteAllNotifications = () => {
+    setState(p => ({
+      ...p,
+      notifications: []
+    }));
+  };
+
+  const addNotification = (notification: Omit<AppNotification, 'id' | 'createdAt'>) => {
+    const newNotif: AppNotification = {
+      ...notification,
+      id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: Date.now(),
+      read: false
+    };
+    setState(p => ({
+      ...p,
+      notifications: [newNotif, ...p.notifications]
+    }));
+  };
+
+  const broadcastNotification = async (notification: Omit<AppNotification, 'id' | 'createdAt'>): Promise<boolean> => {
+    try {
+      const newNotif: AppNotification = {
+        ...notification,
+        id: 'broadcast-' + Date.now(),
+        createdAt: Date.now(),
+        read: false
+      };
+
+      setState(p => ({
+        ...p,
+        notifications: [newNotif, ...p.notifications]
+      }));
+
+      try {
+        await setDoc(doc(db, 'broadcasts', newNotif.id), newNotif);
+      } catch (err) {
+        console.warn('Firestore broadcast notice:', err);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error broadcasting notification:', err);
+      return false;
+    }
+  };
+
   const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt'>): Promise<string> => {
     const orderId = 'ord-' + Date.now();
     const newOrder: Order = {
@@ -403,6 +515,159 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setState(p => ({ ...p, pts: p.pts + amount }));
   };
 
+  const updateUserProfile = async (data: Partial<UserProfile>): Promise<boolean> => {
+    if (!state.user) return false;
+    try {
+      const updatedProfile: UserProfile = {
+        uid: state.user.uid,
+        name: data.name !== undefined ? data.name : (state.profile?.name || state.user.displayName || state.user.email?.split('@')[0] || 'User'),
+        email: state.profile?.email || state.user.email || '',
+        phone: data.phone !== undefined ? data.phone : (state.profile?.phone || ''),
+        photoURL: data.photoURL !== undefined ? data.photoURL : (state.profile?.photoURL || state.user.photoURL || ''),
+        avatarUrl: data.photoURL !== undefined ? data.photoURL : (state.profile?.avatarUrl || state.user.photoURL || ''),
+        accountType: data.accountType || state.profile?.accountType || 'student',
+        points: state.profile?.points ?? state.pts,
+        streak: state.profile?.streak ?? state.strk,
+        lastLogin: state.profile?.lastLogin ?? Date.now(),
+        library: state.profile?.library ?? state.lib,
+        progress: state.profile?.progress ?? {},
+        status: state.profile?.status ?? 'Active',
+        role: state.profile?.role ?? (state.isAdm ? 'admin' : 'user')
+      };
+
+      // 1. Update Firebase Auth Profile (displayName and photoURL)
+      try {
+        await updateProfile(state.user, {
+          displayName: updatedProfile.name,
+          photoURL: updatedProfile.photoURL
+        });
+      } catch (e) {
+        console.warn('Firebase Auth updateProfile notice:', e);
+      }
+
+      // 2. Update Firestore document
+      try {
+        await setDoc(doc(db, 'users', state.user.uid), updatedProfile, { merge: true });
+      } catch (e) {
+        console.warn('Firestore setDoc notice:', e);
+      }
+
+      // 3. Update local state and stored users list
+      setState(prev => {
+        const updatedUsers = prev.users.some(u => u.uid === state.user?.uid)
+          ? prev.users.map(u => u.uid === state.user?.uid ? { ...u, ...updatedProfile } : u)
+          : [...prev.users, updatedProfile];
+        localStorage.setItem('czp_profile', JSON.stringify(updatedProfile));
+        localStorage.setItem('czp_users', JSON.stringify(updatedUsers));
+        return {
+          ...prev,
+          profile: updatedProfile,
+          users: updatedUsers
+        };
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      return false;
+    }
+  };
+
+  const updateUserByAdmin = async (uid: string, data: Partial<UserProfile>): Promise<boolean> => {
+    try {
+      setState(prev => {
+        const updatedUsers = prev.users.map(u => u.uid === uid ? { ...u, ...data } : u);
+        localStorage.setItem('czp_users', JSON.stringify(updatedUsers));
+        
+        let newProfile = prev.profile;
+        if (prev.profile?.uid === uid) {
+          newProfile = { ...prev.profile, ...data };
+          localStorage.setItem('czp_profile', JSON.stringify(newProfile));
+        }
+
+        return {
+          ...prev,
+          users: updatedUsers,
+          profile: newProfile
+        };
+      });
+
+      try {
+        await setDoc(doc(db, 'users', uid), data, { merge: true });
+      } catch (e) {
+        console.warn('Firestore admin update notice:', e);
+      }
+      return true;
+    } catch (err) {
+      console.error('Error admin updating user:', err);
+      return false;
+    }
+  };
+
+  const deleteUserByAdmin = async (uid: string): Promise<boolean> => {
+    try {
+      setState(prev => {
+        const updatedUsers = prev.users.filter(u => u.uid !== uid);
+        localStorage.setItem('czp_users', JSON.stringify(updatedUsers));
+        return {
+          ...prev,
+          users: updatedUsers
+        };
+      });
+
+      try {
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, 'users', uid));
+      } catch (e) {
+        console.warn('Firestore admin delete notice:', e);
+      }
+      return true;
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      return false;
+    }
+  };
+
+  const updateSiteSettings = async (settings: Partial<SiteSettings>): Promise<boolean> => {
+    try {
+      setState(prev => {
+        const updated = { ...prev.siteSettings, ...settings };
+        localStorage.setItem('czp_site_settings', JSON.stringify(updated));
+        return { ...prev, siteSettings: updated };
+      });
+
+      try {
+        await setDoc(doc(db, 'settings', 'site'), settings, { merge: true });
+      } catch (e) {
+        console.warn('Firestore site settings notice:', e);
+      }
+      return true;
+    } catch (err) {
+      console.error('Error updating site settings:', err);
+      return false;
+    }
+  };
+
+  const updateUssdSettings = async (settings: Partial<UssdSettings>): Promise<boolean> => {
+    try {
+      setState(prev => {
+        const updated = { ...prev.ussdSettings, ...settings };
+        localStorage.setItem('czp_ussd_settings', JSON.stringify(updated));
+        return { ...prev, ussdSettings: updated };
+      });
+
+      try {
+        await setDoc(doc(db, 'settings', 'ussd'), settings, { merge: true });
+      } catch (e) {
+        console.warn('Firestore ussd settings notice:', e);
+      }
+      return true;
+    } catch (err) {
+      console.error('Error updating ussd settings:', err);
+      return false;
+    }
+  };
+
   const updateCourses = (courses: ContentItem[]) => setState(p => ({ ...p, courses }));
   const updateTests = (tests: ContentItem[]) => setState(p => ({ ...p, tests }));
   const updateLectures = (lectures: ContentItem[]) => setState(p => ({ ...p, lectures }));
@@ -428,17 +693,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleEpisodeComplete,
         markNotificationRead,
         markAllNotificationsRead,
+        deleteNotification,
+        deleteAllNotifications,
+        addNotification,
+        broadcastNotification,
         createOrder,
         approveOrder,
         rejectOrder,
         giveUserAccess,
         revokeUserAccess,
         addPoints,
+        updateUserProfile,
+        updateUserByAdmin,
+        deleteUserByAdmin,
         updateCourses,
         updateTests,
         updateLectures,
         updateApps,
-        updateBanners
+        updateBanners,
+        updateSiteSettings,
+        updateUssdSettings
       }}
     >
       {children}
