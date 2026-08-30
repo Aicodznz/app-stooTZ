@@ -99,20 +99,20 @@ function AppContent() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'home': return <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} />;
+      case 'home': return <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} onOpenCart={() => setActivePage('cart')} />;
       case 'dash': return <DashboardPage onNavigate={setActivePage} onOpenContent={handleOpenContent} />;
       case 'lib': return <LibraryPage onOpenContent={handleOpenContent} />;
       case 'lb': return <LeaderboardPage />;
       case 'notif':
       case 'notifications': return <NotificationsPage onBack={() => setActivePage('home')} onNavigate={(p) => setActivePage(p as PageID)} />;
-      case 'adm': return isAdm ? <AdminPage /> : <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} />;
+      case 'adm': return isAdm ? <AdminPage /> : <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} onOpenCart={() => setActivePage('cart')} />;
       case 'dev': return <DeveloperPanel onClose={() => setActivePage('home')} />;
       case 'cart': return <CartPage onCheckout={() => setActivePage(user ? 'pay' : 'login')} />;
-      case 'pay': return <PaymentPage onBack={() => setActivePage('home')} />;
+      case 'pay': return <PaymentPage onBack={() => setActivePage('home')} onGoToLibrary={() => setActivePage('lib')} />;
       case 'login': return <AuthPage mode="login" onSwitch={(m) => setActivePage(m === 'register' ? 'register' : 'login')} onSuccess={() => setActivePage('dash')} />;
       case 'reg':
       case 'register': return <AuthPage mode="register" onSwitch={(m) => setActivePage(m === 'register' ? 'register' : 'login')} onSuccess={() => setActivePage('dash')} />;
-      default: return <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} />;
+      default: return <HomePage onOpenApp={handleOpenApp} onOpenLB={() => setActivePage('lb')} onOpenContent={handleOpenContent} onOpenCart={() => setActivePage('cart')} />;
     }
   };
 

@@ -74,20 +74,52 @@ const PROVIDERS: ProviderInfo[] = [
 ];
 
 export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => void }> = ({ onBack, onGoToLibrary }) => {
-  const { cart, courses, tests, lectures, lang, user, profile, clearCart, createOrder, ussdSettings } = useApp();
+  const { 
+    cart, 
+    courses, 
+    tests, 
+    lectures, 
+    lang, 
+    user, 
+    profile, 
+    clearCart, 
+    createOrder, 
+    ussdSettings, 
+    appliedCoupon,
+    triggerDirectUssdPush 
+  } = useApp();
+
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('mpesa');
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone || user?.phoneNumber || '');
   const [ref, setRef] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [ussdPushSent, setUssdPushSent] = useState(false);
+  const [ussdPushState, setUssdPushState] = useState<'idle' | 'pushing' | 'pin_prompt' | 'verifying' | 'success'>('idle');
+  const [pinInput, setPinInput] = useState('');
   const [orderSummary, setOrderSummary] = useState<{ id: string; ref: string; amount: number } | null>(null);
 
   const allItems = [...courses, ...tests, ...lectures];
   const cartItems = allItems.filter(item => cart.includes(item.id));
-  const total = cartItems.reduce((sum, item) => sum + item.price, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
 
+  let discountAmount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.targetType === 'single_course' && appliedCoupon.targetId) {
+      const targetItem = cartItems.find(i => i.id === appliedCoupon.targetId);
+      if (targetItem) {
+        discountAmount = appliedCoupon.discountType === 'percentage'
+          ? Math.round((targetItem.price * appliedCoupon.discountValue) / 100)
+          : Math.min(appliedCoupon.discountValue, targetItem.price);
+      }
+    } else {
+      discountAmount = appliedCoupon.discountType === 'percentage'
+        ? Math.round((subtotal * appliedCoupon.discountValue) / 100)
+        : Math.min(appliedCoupon.discountValue, subtotal);
+    }
+  }
+
+  const total = Math.max(0, subtotal - discountAmount);
   const currentProvider = PROVIDERS.find(p => p.type === selectedMethod) || PROVIDERS[0];
 
   const handleCopyTill = () => {
@@ -96,18 +128,57 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleTriggerUssdPush = () => {
-    if (!phoneNumber) {
-      alert(lang === 'en' ? 'Please enter your phone number first!' : 'Tafadhali weka namba yako ya simu kwanza!');
+  const handleDirectUssdPush = async () => {
+    if (!phoneNumber || phoneNumber.length < 9) {
+      alert(lang === 'en' ? 'Please enter a valid phone number!' : 'Tafadhali weka namba sahihi ya simu!');
       return;
     }
-    setUssdPushSent(true);
-    setTimeout(() => {
-      // Auto fill a simulated transaction ref for ease
-      if (!ref) {
-        setRef(`${currentProvider.short.slice(0,3)}${Math.floor(100000 + Math.random() * 900000)}TZ`);
-      }
-    }, 2000);
+
+    setUssdPushState('pushing');
+
+    // Call USSD push backend simulation
+    const pushResult = await triggerDirectUssdPush(phoneNumber, total, selectedMethod);
+    
+    if (pushResult.success) {
+      setUssdPushState('pin_prompt');
+      setRef(pushResult.ref || `TX-${Date.now().toString().slice(-6)}`);
+    } else {
+      setUssdPushState('idle');
+      alert(lang === 'en' ? 'USSD push failed. Please try manual reference or check your phone number.' : 'Ombi la USSD halikukamilika. Tafadhali hakiki namba yako au lipa kwa namba ya kumbukumbu.');
+    }
+  };
+
+  const handleConfirmUssdPin = async () => {
+    setUssdPushState('verifying');
+    setLoading(true);
+
+    try {
+      const confirmedRef = ref.trim().toUpperCase() || `${currentProvider.short.slice(0,3)}${Math.floor(100000 + Math.random() * 900000)}TZ`;
+      const orderId = await createOrder({
+        userId: user?.uid || 'guest-' + Date.now(),
+        userName: profile?.name || user?.displayName || user?.email || 'Mteja',
+        userEmail: user?.email || 'mteja@codznz.com',
+        itemIds: cart,
+        ref: confirmedRef,
+        amount: total,
+        paymentMethod: selectedMethod,
+        phoneNumber: phoneNumber.trim() || '0754000000',
+        status: 'confirmed'
+      });
+
+      setOrderSummary({
+        id: orderId,
+        ref: confirmedRef,
+        amount: total
+      });
+      setDone(true);
+      clearCart();
+    } catch (err) {
+      console.error('Payment error:', err);
+    } finally {
+      setLoading(false);
+      setUssdPushState('idle');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -297,87 +368,158 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5 px-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] uppercase font-black text-text3 tracking-[2px]">
-              {lang === 'en' ? 'Your Phone Number' : 'Namba ya Simu Uliyolipia'}
-            </label>
-            {ussdSettings?.enabled && (
-              <span className="text-[10px] text-ok font-bold flex items-center gap-1">
-                <Radio size={12} className="animate-pulse" />
-                <span>USSD Push Active</span>
-              </span>
-            )}
+      {/* Primary Payment Action: Direct USSD Push */}
+      <div className="bg-gradient-to-br from-primary/10 via-card to-card border border-primary/30 p-5 rounded-3xl space-y-4 shadow-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Radio className="text-primary animate-pulse" size={18} />
+            <h3 className="font-bold text-sm text-text1">
+              {lang === 'en' ? 'Direct Mobile Push (USSD Instant Pay)' : 'Malipo ya Moja kwa Moja ya Simu (USSD Push)'}
+            </h3>
           </div>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Phone className="absolute left-4 top-4 text-text3" size={18} />
-              <input 
-                type="tel" 
-                placeholder="0754-000-000"
-                value={phoneNumber}
-                onChange={e => setPhoneNumber(e.target.value)}
-                className="w-full h-14 pl-12 pr-4 bg-card border border-theme rounded-2xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono text-text1 text-sm"
-                required
-              />
-            </div>
-            {ussdSettings?.enabled && (
-              <button
-                type="button"
-                onClick={handleTriggerUssdPush}
-                disabled={!phoneNumber.trim()}
-                className="h-14 px-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-2xl flex flex-col items-center justify-center text-xs font-bold shrink-0 transition-all active:scale-95 disabled:opacity-40"
-              >
-                <Radio size={16} />
-                <span className="text-[10px] mt-0.5">{ussdPushSent ? 'Push Sent' : 'Tuma Push'}</span>
-              </button>
-            )}
-          </div>
-          {ussdPushSent && (
-            <div className="p-2.5 bg-ok/10 border border-ok/30 rounded-xl text-ok text-[11px] font-bold flex items-center gap-1.5">
-              <CheckCircle size={14} />
-              <span>Ombi la USSD Push limetumwa kwenye namba yako ({phoneNumber}). Tafadhali weka PIN ya M-Pesa/Tigo Pesa kukamilisha!</span>
-            </div>
-          )}
+          <span className="text-[10px] uppercase font-black bg-ok/10 text-ok border border-ok/20 px-2 py-0.5 rounded-full">
+            {lang === 'en' ? 'Recommended' : 'Inayopendekezwa'}
+          </span>
         </div>
 
-        <div className="space-y-1.5 px-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] uppercase font-black text-text3 tracking-[2px]">
-              {lang === 'en' ? 'Transaction Code / Ref (SMS)' : 'Kumbukumbu ya Muamala (SMS)'}
-            </label>
-            <span className="text-[10px] text-ok font-bold">{lang === 'en' ? 'Instant Access' : 'Uthibitisho wa Haraka'}</span>
-          </div>
+        <p className="text-xs text-text3 leading-relaxed">
+          {lang === 'en'
+            ? 'Enter your phone number below and tap Pay. A payment prompt will appear on your phone screen immediately to enter your PIN.'
+            : 'Weka namba yako ya simu hapa chini kisha bonyeza Lipa. Ombi la malipo litatokea papo hapo kwenye kioo cha simu yako kuweka PIN.'}
+        </p>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase font-black text-text3 tracking-wider block">
+            {lang === 'en' ? 'Your Phone Number' : 'Namba ya Simu (M-Pesa / Tigo / Airtel)'}
+          </label>
           <div className="relative">
-            <QrCode className="absolute left-4 top-4 text-text3" size={18} />
+            <Phone className="absolute left-4 top-4 text-text3" size={18} />
             <input 
-              type="text" 
-              placeholder="SKE992381JQA..."
-              value={ref}
-              onChange={e => setRef(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-card border border-theme rounded-2xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono uppercase text-text1 text-sm font-bold tracking-wider"
-              autoCapitalize="characters"
-              required
+              type="tel" 
+              placeholder="0754-000-000 au 2557..."
+              value={phoneNumber}
+              onChange={e => setPhoneNumber(e.target.value)}
+              className="w-full h-13 pl-12 pr-4 bg-card2 border border-theme rounded-2xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono text-text1 text-sm font-bold"
             />
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          disabled={loading || !ref.trim()}
-          className="w-full h-14 bg-gradient-to-r from-ok to-emerald-500 hover:opacity-95 text-white rounded-2xl font-black shadow-xl shadow-ok/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 text-xs uppercase tracking-wider mt-2"
+        <button
+          type="button"
+          onClick={handleDirectUssdPush}
+          disabled={ussdPushState === 'pushing' || !phoneNumber.trim()}
+          className="w-full h-13 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 text-xs uppercase tracking-wider"
         >
-          {loading ? (
-            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          {ussdPushState === 'pushing' ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <>
-              <ShieldCheck size={18} />
-              <span>{lang === 'en' ? 'Verify & Unlock Content' : 'Thibitisha & Fungua Mafunzo'}</span>
+              <Radio size={16} />
+              <span>{lang === 'en' ? `Send USSD Push (${formatPrice(total)})` : `Tuma Ombi la Malipo (${formatPrice(total)})`}</span>
             </>
           )}
         </button>
-      </form>
+      </div>
+
+      {/* USSD PIN Prompt Interactive Modal Simulation */}
+      {ussdPushState === 'pin_prompt' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="bg-[#1e232a] border-2 border-primary text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary mx-auto flex items-center justify-center">
+              <Radio size={24} className="animate-pulse" />
+            </div>
+
+            <div>
+              <h4 className="font-black text-sm uppercase tracking-wide text-white">
+                {currentProvider.name} Push
+              </h4>
+              <p className="text-xs text-gray-300 mt-1">
+                Lipa kwa {currentProvider.accountName} <br />
+                Kiasi: <strong className="text-primary font-mono text-sm">{formatPrice(total)}</strong>
+              </p>
+            </div>
+
+            <div className="p-3 bg-black/40 rounded-xl border border-gray-700 text-left text-xs font-mono text-gray-300">
+              <div>Simu: {phoneNumber}</div>
+              <div>Ref: {ref}</div>
+            </div>
+
+            <div className="space-y-1 text-left">
+              <label className="text-[10px] uppercase font-bold text-gray-400">
+                {lang === 'en' ? 'Enter Mobile PIN to Authorize' : 'Weka PIN ya Mtandao Kuhalalisha'}
+              </label>
+              <input
+                type="password"
+                maxLength={5}
+                placeholder="••••"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                className="w-full h-12 text-center text-lg tracking-[8px] font-mono bg-black/50 border border-gray-600 rounded-xl text-white outline-none focus:border-primary"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setUssdPushState('idle')}
+                className="flex-1 h-11 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-bold transition-colors"
+              >
+                Ghairi
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmUssdPin}
+                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-900/40 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <Check size={16} />
+                <span>Thibitisha</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Reference Fallback */}
+      <details className="bg-card border border-theme rounded-2xl p-4 text-left group">
+        <summary className="text-xs font-bold text-text2 cursor-pointer flex items-center justify-between select-none">
+          <span>{lang === 'en' ? 'Paid manually via USSD / QR? Enter SMS reference' : 'Umelipa mwenyewe kwa namba ya kampuni? Weka namba ya SMS hapa'}</span>
+          <span className="text-primary text-[11px] group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        
+        <form onSubmit={handleSubmit} className="space-y-3 pt-4 border-t border-theme mt-3">
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase font-black text-text3 tracking-wider">
+              {lang === 'en' ? 'Transaction Reference (SMS)' : 'Kumbukumbu ya Muamala (SMS)'}
+            </label>
+            <div className="relative">
+              <QrCode className="absolute left-3.5 top-3.5 text-text3" size={16} />
+              <input 
+                type="text" 
+                placeholder="Mfano: SKE992381JQA..."
+                value={ref}
+                onChange={e => setRef(e.target.value)}
+                className="w-full h-11 pl-10 pr-3 bg-card2 border border-theme rounded-xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono uppercase text-text1 text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={loading || !ref.trim()}
+            className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 text-xs"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <ShieldCheck size={16} />
+                <span>{lang === 'en' ? 'Verify SMS Reference' : 'Hakiki Namba ya SMS'}</span>
+              </>
+            )}
+          </button>
+        </form>
+      </details>
     </div>
   );
 };

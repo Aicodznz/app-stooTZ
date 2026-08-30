@@ -2443,10 +2443,606 @@ export const BroadcastTab: React.FC = () => {
   );
 };
 
+// --- DEVELOPER REQUESTS & PACKAGES TAB ---
+export const DeveloperManagementTab: React.FC = () => {
+  const { 
+    developerApplications, 
+    developerPackages, 
+    approveDeveloperApplication, 
+    rejectDeveloperApplication, 
+    addDeveloperPackage, 
+    updateDeveloperPackage, 
+    deleteDeveloperPackage,
+    lang 
+  } = useApp();
+
+  const [activeSubTab, setActiveSubTab] = useState<'requests' | 'packages'>('requests');
+  const [rejectModalAppId, setRejectModalAppId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isCreatingPkg, setIsCreatingPkg] = useState(false);
+  const [newPkgName, setNewPkgName] = useState('');
+  const [newPkgPrice, setNewPkgPrice] = useState('15000');
+  const [newPkgCycle, setNewPkgCycle] = useState<'one-time' | 'monthly' | 'yearly'>('monthly');
+  const [newPkgDesc, setNewPkgDesc] = useState('');
+  const [newPkgMaxApps, setNewPkgMaxApps] = useState('10');
+  const [newPkgFeatures, setNewPkgFeatures] = useState('Uchapishaji wa Apps 10, Asilimia 80 ya Mapato, Beji ya Verified Developer');
+  const [newPkgIsPopular, setNewPkgIsPopular] = useState(false);
+
+  const pendingApps = developerApplications.filter(a => a.status === 'pending');
+
+  const handleCreatePackage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPkgName.trim()) return;
+
+    addDeveloperPackage({
+      name: newPkgName,
+      price: parseInt(newPkgPrice) || 0,
+      billingCycle: newPkgCycle,
+      desc: newPkgDesc || 'Kifurushi rasmi cha kuweka programu na masomo kwenye jukwaa.',
+      maxApps: parseInt(newPkgMaxApps) || 5,
+      features: newPkgFeatures.split(',').map(s => s.trim()).filter(Boolean),
+      isPopular: newPkgIsPopular,
+      active: true
+    });
+
+    setIsCreatingPkg(false);
+    setNewPkgName('');
+    setNewPkgPrice('15000');
+    setNewPkgDesc('');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Sub Tabs */}
+      <div className="flex items-center gap-2 border-b border-theme pb-2">
+        <button
+          onClick={() => setActiveSubTab('requests')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeSubTab === 'requests' 
+              ? 'bg-primary text-white shadow-md' 
+              : 'bg-card text-text3 hover:text-text1 border border-theme'
+          }`}
+        >
+          <UserCheck size={15} />
+          <span>Maombi ya Developers ({pendingApps.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveSubTab('packages')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeSubTab === 'packages' 
+              ? 'bg-primary text-white shadow-md' 
+              : 'bg-card text-text3 hover:text-text1 border border-theme'
+          }`}
+        >
+          <Tag size={15} />
+          <span>Vifurushi vya Developer ({developerPackages.length})</span>
+        </button>
+      </div>
+
+      {activeSubTab === 'requests' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-text1">Maombi ya Wasanidi (Developer Applications)</h3>
+            <span className="text-xs text-text3">Jumla: {developerApplications.length}</span>
+          </div>
+
+          {developerApplications.length === 0 ? (
+            <div className="p-8 text-center bg-card border border-theme rounded-2xl text-text3 text-xs">
+              Hakuna maombi ya developer yaliyowasilishwa bado.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {developerApplications.map(app => (
+                <div key={app.id} className="bg-card border border-theme rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        app.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                        app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                        'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                      }`}>
+                        {app.status.toUpperCase()}
+                      </span>
+                      <h4 className="text-sm font-bold text-text1">{app.userName}</h4>
+                      <span className="text-xs text-text3">({app.userEmail})</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-text2 pt-1">
+                      <div>
+                        <span className="text-text3 text-[10px] block uppercase">Simu / Malipo:</span>
+                        <span className="font-bold">{app.userPhone}</span>
+                      </div>
+                      <div>
+                        <span className="text-text3 text-[10px] block uppercase">Kifurushi:</span>
+                        <span className="font-bold text-primary">{app.packageName} ({formatPrice(app.packagePrice)})</span>
+                      </div>
+                      <div>
+                        <span className="text-text3 text-[10px] block uppercase">Ref ya Malipo:</span>
+                        <span className="font-mono text-xs">{app.paymentRef || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-text3 text-[10px] block uppercase">Portfolio:</span>
+                        {app.portfolioUrl ? (
+                          <a href={app.portfolioUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center gap-1 text-xs truncate">
+                            <span>Fungua</span>
+                            <ExternalLink size={10} />
+                          </a>
+                        ) : <span className="text-text3">Hakuna</span>}
+                      </div>
+                    </div>
+
+                    {app.devBio && (
+                      <p className="text-xs text-text3 italic pt-1 bg-card2 p-2 rounded-xl border border-theme">
+                        "{app.devBio}"
+                      </p>
+                    )}
+                  </div>
+
+                  {app.status === 'pending' && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => approveDeveloperApplication(app.id)}
+                        className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                      >
+                        <Check size={14} />
+                        <span>Idhinisha (Approve)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRejectModalAppId(app.id);
+                          setRejectReason('');
+                        }}
+                        className="h-9 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+                      >
+                        <X size={14} />
+                        <span>Kataa</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Rejection Modal */}
+          {rejectModalAppId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+              <div className="bg-card border border-theme rounded-2xl p-5 max-w-sm w-full space-y-3">
+                <h4 className="text-sm font-bold text-text1">Sababu ya Kukataa Ombi</h4>
+                <textarea
+                  rows={3}
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Eleza sababu (mfano: Namba ya malipo haikupokelewa)..."
+                  className="w-full p-2.5 bg-card2 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setRejectModalAppId(null)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-text3 hover:text-text1"
+                  >
+                    Ghairi
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (rejectModalAppId) {
+                        rejectDeveloperApplication(rejectModalAppId, rejectReason);
+                        setRejectModalAppId(null);
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold"
+                  >
+                    Thibitisha Kukataa
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeSubTab === 'packages' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-text1">Vifurushi vya Developer (Developer Packages)</h3>
+              <p className="text-xs text-text3">Weka bei na mipaka ya uchapishaji wa programu</p>
+            </div>
+            <button
+              onClick={() => setIsCreatingPkg(!isCreatingPkg)}
+              className="h-9 px-3.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+            >
+              <Plus size={14} />
+              <span>{isCreatingPkg ? 'Funga Fomu' : 'Tengeneza Kifurushi Kipya'}</span>
+            </button>
+          </div>
+
+          {isCreatingPkg && (
+            <form onSubmit={handleCreatePackage} className="bg-card border border-theme rounded-2xl p-4 sm:p-5 shadow-md space-y-3">
+              <h4 className="text-xs font-black uppercase text-primary">Kifurushi Kipya cha Developer</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Jina la Kifurushi</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Mfano: Pro Studio Monthly"
+                    value={newPkgName}
+                    onChange={(e) => setNewPkgName(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Bei (TSh)</label>
+                  <input
+                    type="number"
+                    required
+                    value={newPkgPrice}
+                    onChange={(e) => setNewPkgPrice(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Muda wa Malipo</label>
+                  <select
+                    value={newPkgCycle}
+                    onChange={(e) => setNewPkgCycle(e.target.value as any)}
+                    className="w-full h-9 px-2 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  >
+                    <option value="monthly">Monthly (Kila Mwezi)</option>
+                    <option value="yearly">Yearly (Kila Mwaka)</option>
+                    <option value="one-time">One-Time (Kudumu)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Kikomo cha Apps (Max Apps)</label>
+                  <input
+                    type="number"
+                    value={newPkgMaxApps}
+                    onChange={(e) => setNewPkgMaxApps(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Maelezo Mafupi</label>
+                  <input
+                    type="text"
+                    placeholder="Inafaa kwa wasanidi binafsi..."
+                    value={newPkgDesc}
+                    onChange={(e) => setNewPkgDesc(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-text2 block mb-1">Vipengele (Tenganisha kwa mkato ',')</label>
+                <input
+                  type="text"
+                  value={newPkgFeatures}
+                  onChange={(e) => setNewPkgFeatures(e.target.value)}
+                  className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 text-xs text-text2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newPkgIsPopular}
+                    onChange={(e) => setNewPkgIsPopular(e.target.checked)}
+                    className="rounded text-primary"
+                  />
+                  <span>Weka Beji ya "POPULAR"</span>
+                </label>
+                <button
+                  type="submit"
+                  className="h-9 px-4 bg-primary text-white rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                >
+                  Hifadhi Kifurushi
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {developerPackages.map(pkg => (
+              <div key={pkg.id} className="bg-card border border-theme rounded-2xl p-4 shadow-sm space-y-3 relative">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-black text-sm text-text1">{pkg.name}</h4>
+                    <span className="text-xs text-primary font-black">{formatPrice(pkg.price)}</span>
+                    <span className="text-[10px] text-text3 ml-1">/ {pkg.billingCycle}</span>
+                  </div>
+                  <button
+                    onClick={() => deleteDeveloperPackage(pkg.id)}
+                    className="p-1.5 text-text3 hover:text-err hover:bg-card2 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <p className="text-xs text-text3">{pkg.desc}</p>
+
+                <div className="space-y-1 pt-2 border-t border-theme text-xs text-text2">
+                  {pkg.features.map((f, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                      <CheckCircle size={11} className="text-emerald-500 shrink-0" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- COUPONS & LEARNING BUNDLES TAB ---
+export const CouponsAndBundlesTab: React.FC = () => {
+  const { 
+    coupons, 
+    bundles, 
+    courses, 
+    addCoupon, 
+    deleteCoupon, 
+    updateBundles, 
+    lang 
+  } = useApp();
+
+  const [subTab, setSubTab] = useState<'coupons' | 'bundles'>('coupons');
+  const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+  const [code, setCode] = useState('');
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [discountValue, setDiscountValue] = useState('20');
+  const [targetType, setTargetType] = useState<'all' | 'single_course'>('all');
+  const [targetId, setTargetId] = useState('');
+  const [maxUses, setMaxUses] = useState('100');
+  const [expiryDays, setExpiryDays] = useState('30');
+
+  const handleAddCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+
+    addCoupon({
+      code: code.trim().toUpperCase(),
+      discountType,
+      discountValue: parseInt(discountValue) || 10,
+      targetType,
+      targetId: targetType === 'single_course' ? targetId : undefined,
+      maxUses: parseInt(maxUses) || 50,
+      expiresAt: Date.now() + (parseInt(expiryDays) || 30) * 86400000,
+      active: true
+    });
+
+    setIsAddingCoupon(false);
+    setCode('');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Sub Tabs */}
+      <div className="flex items-center gap-2 border-b border-theme pb-2">
+        <button
+          onClick={() => setSubTab('coupons')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            subTab === 'coupons' 
+              ? 'bg-primary text-white shadow-md' 
+              : 'bg-card text-text3 hover:text-text1 border border-theme'
+          }`}
+        >
+          <Tag size={15} />
+          <span>Kuponi & Promosheni ({coupons.length})</span>
+        </button>
+        <button
+          onClick={() => setSubTab('bundles')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            subTab === 'bundles' 
+              ? 'bg-primary text-white shadow-md' 
+              : 'bg-card text-text3 hover:text-text1 border border-theme'
+          }`}
+        >
+          <Layers size={15} />
+          <span>Learning Bundles ({bundles.length})</span>
+        </button>
+      </div>
+
+      {subTab === 'coupons' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-text1">Msimbo wa Punguzo & Kuponi (Coupons)</h3>
+              <p className="text-xs text-text3">Tengeneza ofa za punguzo kwa kozi zote au somo moja mahususi</p>
+            </div>
+            <button
+              onClick={() => setIsAddingCoupon(!isAddingCoupon)}
+              className="h-9 px-3.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+            >
+              <Plus size={14} />
+              <span>{isAddingCoupon ? 'Funga Fomu' : 'Ongeza Kuponi Mpya'}</span>
+            </button>
+          </div>
+
+          {isAddingCoupon && (
+            <form onSubmit={handleAddCoupon} className="bg-card border border-theme rounded-2xl p-4 sm:p-5 shadow-md space-y-3">
+              <h4 className="text-xs font-black uppercase text-primary">Tengeneza Kuponi ya Punguzo</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Msimbo (Code)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Mfano: KARIBU50"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    className="w-full h-9 px-3 text-xs font-mono uppercase bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Aina ya Punguzo</label>
+                  <select
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value as any)}
+                    className="w-full h-9 px-2 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  >
+                    <option value="percentage">Asilimia (%) ya Bei</option>
+                    <option value="fixed">Kiwango Maalumu (TSh)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">
+                    {discountType === 'percentage' ? 'Asilimia (%)' : 'Kiasi (TSh)'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Inatumika Kwenye</label>
+                  <select
+                    value={targetType}
+                    onChange={(e) => setTargetType(e.target.value as any)}
+                    className="w-full h-9 px-2 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  >
+                    <option value="all">Kozi & Bidhaa Zote</option>
+                    <option value="single_course">Somo Maalum Tu</option>
+                  </select>
+                </div>
+
+                {targetType === 'single_course' && (
+                  <div>
+                    <label className="text-[11px] font-bold text-text2 block mb-1">Chagua Somo</label>
+                    <select
+                      value={targetId}
+                      onChange={(e) => setTargetId(e.target.value)}
+                      className="w-full h-9 px-2 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                    >
+                      <option value="">Chagua kozi...</option>
+                      {courses.map(c => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Kikomo cha Matumizi (Max)</label>
+                  <input
+                    type="number"
+                    value={maxUses}
+                    onChange={(e) => setMaxUses(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Muda wa Kuisha (Siku)</label>
+                  <input
+                    type="number"
+                    value={expiryDays}
+                    onChange={(e) => setExpiryDays(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  className="h-9 px-4 bg-primary text-white rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                >
+                  Hifadhi Kuponi
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {coupons.map(cpn => (
+              <div key={cpn.id} className="bg-card border border-theme rounded-2xl p-4 shadow-sm flex flex-col justify-between space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="font-mono text-sm font-black text-primary px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20">
+                      {cpn.code}
+                    </span>
+                    <div className="text-xs font-bold text-text1 mt-1">
+                      {cpn.discountType === 'percentage' ? `${cpn.discountValue}% PUNGUZO` : `${formatPrice(cpn.discountValue)} PUNGUZO`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deleteCoupon(cpn.id)}
+                    className="p-1 text-text3 hover:text-err hover:bg-card2 rounded-lg"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-text3 space-y-0.5">
+                  <div>Upeo: {cpn.targetType === 'all' ? 'Bidhaa Zote' : 'Somo Maalum'}</div>
+                  <div>Imetumika: {cpn.usedCount} / {cpn.maxUses || '∞'} mara</div>
+                  {cpn.expiresAt && (
+                    <div>Inaisha: {new Date(cpn.expiresAt).toLocaleDateString()}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subTab === 'bundles' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-text1">Learning Bundles & Paths</h3>
+              <p className="text-xs text-text3">Mifumo iliyounganishwa ya masomo kadhaa kwa bei ya ofa</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bundles.map(bundle => (
+              <div key={bundle.id} className="bg-card border border-theme rounded-2xl p-4 shadow-sm space-y-2.5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-bg3 text-xl flex items-center justify-center shrink-0">
+                    {bundle.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-xs text-text1">{bundle.title}</h4>
+                    <div className="text-xs text-primary font-black">
+                      {formatPrice(bundle.price)} <span className="text-[10px] text-text3 line-through">{formatPrice(bundle.originalPrice)}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-text3">{bundle.desc}</p>
+                <div className="text-[11px] text-text2 bg-card2 p-2 rounded-xl border border-theme">
+                  Inajumuisha masomo {bundle.courseIds.length}: {bundle.courseIds.join(', ')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const AdminPage: React.FC = () => {
-  const { orders, notifications } = useApp();
-  const [tab, setTab] = useState<'analytics' | 'orders' | 'broadcast' | 'branding' | 'theme' | 'ussd_apk' | 'users' | 'content' | 'apps' | 'banners' | 'developer'>('analytics');
+  const { orders, notifications, developerApplications } = useApp();
+  const [tab, setTab] = useState<'analytics' | 'orders' | 'broadcast' | 'branding' | 'theme' | 'ussd_apk' | 'users' | 'developer_mgmt' | 'coupons_bundles' | 'content' | 'apps' | 'banners' | 'developer'>('analytics');
   const [pendingCount, setPendingCount] = useState(() => orders.filter(o => o.status === 'pending').length);
+  const pendingDevsCount = developerApplications.filter(a => a.status === 'pending').length;
 
   useEffect(() => {
     setPendingCount(orders.filter(o => o.status === 'pending').length);
@@ -2470,15 +3066,17 @@ export const AdminPage: React.FC = () => {
   const tabs = [
     { id: 'analytics', label: 'Overview', icon: BarChart3 },
     { id: 'orders', label: 'Orders', icon: ShoppingCart, badge: pendingCount },
+    { id: 'developer_mgmt', label: 'Developer Requests', icon: UserCheck, badge: pendingDevsCount },
+    { id: 'coupons_bundles', label: 'Coupons & Bundles', icon: Tag },
     { id: 'broadcast', label: 'Notifications & Broadcast', icon: Bell, badge: notifications.filter(n => !n.read).length },
     { id: 'branding', label: 'Website & Logo', icon: Globe },
     { id: 'theme', label: 'System Colors', icon: Palette },
     { id: 'ussd_apk', label: 'USSD Push APK', icon: Radio },
-    { id: 'users', label: 'Users & Developers', icon: UserIcon },
+    { id: 'users', label: 'Users & Roles', icon: UserIcon },
     { id: 'content', label: 'Content', icon: BookOpen },
     { id: 'apps', label: 'Apps', icon: Bolt },
     { id: 'banners', label: 'Banners', icon: Trophy },
-    { id: 'developer', label: 'Developer Console', icon: Code2 },
+    { id: 'developer', label: 'Developer Studio', icon: Code2 },
   ];
 
   return (
@@ -2510,6 +3108,8 @@ export const AdminPage: React.FC = () => {
       <div className="pb-10">
         {tab === 'analytics' && <AnalyticsTab />}
         {tab === 'orders' && <OrdersTab />}
+        {tab === 'developer_mgmt' && <DeveloperManagementTab />}
+        {tab === 'coupons_bundles' && <CouponsAndBundlesTab />}
         {tab === 'broadcast' && <BroadcastTab />}
         {tab === 'branding' && <BrandingTab />}
         {tab === 'theme' && <ThemeTab />}

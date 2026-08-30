@@ -5,12 +5,23 @@ import { HeroStats } from './HeroStats';
 import { CategoryCards } from './CategoryCards';
 import { AppCard } from './AppCard';
 import { ContentCard } from './ContentCard';
-import { Category } from '../types';
-import { ChevronLeft, Sparkles, Smartphone } from 'lucide-react';
+import { SearchBar } from './SearchBar';
+import { BundlesSection } from './BundlesSection';
+import { ReferralModal } from './ReferralModal';
+import { BadgesModal } from './BadgesModal';
+import { Category, LearningBundle } from '../types';
+import { ChevronLeft, Sparkles, Smartphone, Gift, Award } from 'lucide-react';
 
-export const HomePage: React.FC<{ onOpenApp: (id: string) => void, onOpenLB: () => void, onOpenContent: (id: string) => void }> = ({ onOpenApp, onOpenLB, onOpenContent }) => {
-  const { banners, apps, courses, tests, lectures, lang } = useApp();
+export const HomePage: React.FC<{ 
+  onOpenApp: (id: string) => void; 
+  onOpenLB: () => void; 
+  onOpenContent: (id: string) => void;
+  onOpenCart?: () => void;
+}> = ({ onOpenApp, onOpenLB, onOpenContent, onOpenCart }) => {
+  const { banners, apps, courses, tests, lectures, lang, addToCart } = useApp();
   const [subView, setSubView] = useState<Category | null>(null);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [showBadgesModal, setShowBadgesModal] = useState(false);
 
   const getSubContent = () => {
     switch (subView) {
@@ -26,19 +37,50 @@ export const HomePage: React.FC<{ onOpenApp: (id: string) => void, onOpenLB: () 
     else setSubView(cat);
   };
 
+  const handleSelectBundle = (bundle: LearningBundle) => {
+    // Add all courses in bundle to cart
+    bundle.courseIds.forEach(id => {
+      addToCart(id);
+    });
+    if (onOpenCart) {
+      onOpenCart();
+    }
+  };
+
   return (
     <div className="page-anim space-y-4">
+      {/* Universal Search Bar */}
+      <SearchBar onSelectContent={onOpenContent} onSelectApp={onOpenApp} />
+
       {!subView ? (
         <>
-          {/* Banner Slider */}
+          {/* Top Banner Carousel */}
           <BannerSlider banners={banners} />
+
+          {/* Quick Access Action Pills (Refer & Earn / Badges) */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setShowReferralModal(true)}
+              className="h-10 px-3 bg-card border border-theme hover:border-amber-500/40 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-text1 transition-all active:scale-95 shadow-xs"
+            >
+              <Gift size={14} className="text-amber-500" />
+              <span>{lang === 'en' ? 'Refer & Earn XP' : 'Alika & Pata XP'}</span>
+            </button>
+            <button
+              onClick={() => setShowBadgesModal(true)}
+              className="h-10 px-3 bg-card border border-theme hover:border-primary/40 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-text1 transition-all active:scale-95 shadow-xs"
+            >
+              <Award size={14} className="text-primary" />
+              <span>{lang === 'en' ? 'Achievements' : 'Beji & Mafanikio'}</span>
+            </button>
+          </div>
+
+          {/* Main Category Cards */}
+          <CategoryCards onSelect={handleCategorySelect} />
 
           {/* Quick Metrics Bar */}
           <HeroStats />
 
-          {/* Main Category Cards */}
-          <CategoryCards onSelect={handleCategorySelect} />
-          
           {/* Featured Apps Section */}
           <div className="space-y-2.5 pt-1">
             <div className="flex items-center justify-between px-1">
@@ -56,6 +98,11 @@ export const HomePage: React.FC<{ onOpenApp: (id: string) => void, onOpenLB: () 
                 <AppCard key={app.id} app={app} onClick={onOpenApp} />
               ))}
             </div>
+          </div>
+
+          {/* Compact Learning Paths & Bundles Carousel at the Bottom */}
+          <div className="pt-2">
+            <BundlesSection onSelectBundle={handleSelectBundle} onOpenContent={onOpenContent} />
           </div>
         </>
       ) : (
@@ -86,7 +133,18 @@ export const HomePage: React.FC<{ onOpenApp: (id: string) => void, onOpenLB: () 
           </div>
         </div>
       )}
+
+      {/* Referral Program Modal */}
+      {showReferralModal && (
+        <ReferralModal onClose={() => setShowReferralModal(false)} />
+      )}
+
+      {/* Achievement Badges Modal */}
+      {showBadgesModal && (
+        <BadgesModal onClose={() => setShowBadgesModal(false)} />
+      )}
     </div>
   );
 };
+
 

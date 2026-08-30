@@ -1,4 +1,18 @@
-import { ContentItem, Banner, CodApp, UserProfile, Review, Discussion, AppNotification, Order } from './types';
+import { 
+  ContentItem, 
+  Banner, 
+  CodApp, 
+  UserProfile, 
+  Review, 
+  Discussion, 
+  AppNotification, 
+  Order,
+  DeveloperPackage,
+  DeveloperApplication,
+  LearningBundle,
+  Coupon,
+  AchievementBadge
+} from './types';
 
 export const SEED_COURSES: ContentItem[] = [
   {
@@ -391,5 +405,227 @@ export const SEED_ORDERS: Order[] = [
     phoneNumber: '0712345678',
     status: 'confirmed',
     createdAt: Date.now() - 86400000 * 1
+  }
+];
+
+export const SEED_DEVELOPER_PACKAGES: DeveloperPackage[] = [
+  {
+    id: 'pkg-free',
+    name: 'Starter Developer',
+    description: 'Chaguo la kuanzia kwa wanafunzi na watengenezaji wanaoanza kujifunza kuweka app zao.',
+    price: 0,
+    durationDays: 30,
+    features: [
+      'Weka hadi App 2 bure',
+      'Ufikiaji wa Developer Studio',
+      'Dashibodi ya takwimu za msingi',
+      'Msaada wa jamii'
+    ],
+    maxApps: 2,
+    badge: 'FREE TRIAL',
+    active: true,
+    revenueSharePct: 70
+  },
+  {
+    id: 'pkg-pro',
+    name: 'Pro Developer Monthly',
+    description: 'Ufikiaji kamili wa kuweka apps zisizo na kikomo, USSD Push integration na analytics za kina.',
+    price: 15000,
+    durationDays: 30,
+    features: [
+      'Weka hadi Apps 10',
+      'Beji ya "Verified Developer"',
+      '85% mgao wa mapato ya mauzo ya App',
+      'Kuweka video za maelekezo ya App',
+      'Msaada wa kipaumbele wa masaa 24'
+    ],
+    maxApps: 10,
+    badge: 'POPULAR',
+    active: true,
+    revenueSharePct: 85
+  },
+  {
+    id: 'pkg-studio',
+    name: 'Studio Lifetime Access',
+    description: 'Kwa studio za programu, kampuni, na watengenezaji waandamizi wanaotaka uhuru kamili wa kudumu.',
+    price: 50000,
+    durationDays: 3650,
+    features: [
+      'Apps zisizo na kikomo (Unlimited Apps)',
+      '95% mgao wa mapato ya mauzo',
+      'Bango la VIP kwenye ukurasa wa mwanzo',
+      'Uwezo wa kuweka masomo ya kozi na mitihani',
+      'Direct API Access & USSD Push Push Gateway'
+    ],
+    maxApps: 999,
+    badge: 'LIFETIME VIP',
+    active: true,
+    revenueSharePct: 95
+  }
+];
+
+export const SEED_DEVELOPER_APPLICATIONS: DeveloperApplication[] = [
+  {
+    id: 'dev-app-1',
+    userId: 'u-demo-1',
+    userName: 'Hamisi Omari',
+    userEmail: 'hamisi@example.com',
+    userPhone: '0754890123',
+    packageId: 'pkg-pro',
+    packageName: 'Pro Developer Monthly',
+    packagePrice: 15000,
+    paymentRef: 'SKE8891JQA',
+    status: 'pending',
+    portfolioUrl: 'https://github.com/hamisi-dev',
+    devBio: 'Nimetengeneza app ya kusimamia hesabu za maduka (POS) na ninataka kuichapisha kwenye CodZnz Store.',
+    appliedAt: Date.now() - 3600000 * 3
+  }
+];
+
+export const SEED_BUNDLES: LearningBundle[] = [
+  {
+    id: 'bnd-fullstack',
+    title: 'Full Stack Web Developer Mastery Path',
+    desc: 'Njia kamili ya kugeuka kuwa mhandisi wa programu kuanzia HTML/CSS, JavaScript, React, Node.js hadi MongoDB.',
+    icon: '🌐',
+    coverImg: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80',
+    level: 'All Levels',
+    duration: '45+ Masomo (Vyeti 2)',
+    courseIds: ['c1', 'c3', 'c4', 't1'],
+    price: 35000,
+    originalPrice: 55000,
+    badge: '🔥 OKOA 36%',
+    skills: ['HTML5 & Modern CSS', 'ES6+ JavaScript', 'React Component Architecture', 'Node.js REST API', 'Cheti Rasmi'],
+    createdAt: Date.now() - 86400000 * 4
+  },
+  {
+    id: 'bnd-python-ai',
+    title: 'Python, Data Science & AI Specialist Path',
+    desc: 'Jifunze lugha yenye soko kubwa duniani kwa uchambuzi wa data, uendeshaji wa mifumo na ujasusi mnemba (AI).',
+    icon: '🐍',
+    coverImg: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
+    level: 'All Levels',
+    duration: '30+ Masomo (Vyeti Rasmi)',
+    courseIds: ['c2', 't2', 'l1'],
+    price: 30000,
+    originalPrice: 50000,
+    badge: '⚡ BESTSELLER',
+    skills: ['Python Core', 'Pandas & NumPy', 'Data Visualization', 'Algorithmic Thinking'],
+    createdAt: Date.now() - 86400000 * 2
+  }
+];
+
+export const SEED_COUPONS: Coupon[] = [
+  {
+    id: 'cpn-1',
+    code: 'CODZNZ50',
+    discountType: 'percentage',
+    discountValue: 50,
+    targetType: 'all',
+    expiresAt: Date.now() + 86400000 * 30,
+    maxUses: 200,
+    usedCount: 28,
+    active: true,
+    createdAt: Date.now() - 86400000 * 2
+  },
+  {
+    id: 'cpn-2',
+    code: 'WELCOME10K',
+    discountType: 'fixed',
+    discountValue: 10000,
+    targetType: 'all',
+    expiresAt: Date.now() + 86400000 * 60,
+    maxUses: 500,
+    usedCount: 142,
+    active: true,
+    createdAt: Date.now() - 86400000 * 10
+  },
+  {
+    id: 'cpn-3',
+    code: 'REACTPRO',
+    discountType: 'percentage',
+    discountValue: 40,
+    targetType: 'single_course',
+    targetId: 'c4',
+    expiresAt: Date.now() + 86400000 * 15,
+    maxUses: 50,
+    usedCount: 12,
+    active: true,
+    createdAt: Date.now() - 86400000 * 1
+  }
+];
+
+export const SEED_ACHIEVEMENT_BADGES: AchievementBadge[] = [
+  {
+    id: 'bdg-welcome',
+    title: 'Mwanzo wa Safari',
+    titleSw: 'Mwanzo wa Safari',
+    desc: 'Karibu CodZnz Pro! Ulisajili akaunti yako ya kwanza kwa mafanikio.',
+    descSw: 'Ulisajili akaunti yako ya kwanza kwa mafanikio.',
+    icon: '🚀',
+    xpBonus: 50,
+    category: 'community',
+    requiredCount: 1,
+    badgeLevel: 'Bronze'
+  },
+  {
+    id: 'bdg-first-lesson',
+    title: 'Msimbo Bingwa',
+    titleSw: 'Msimbo Bingwa',
+    desc: 'Kamilisha video au sura yako ya kwanza ya kozi yoyote.',
+    descSw: 'Kamilisha video au sura yako ya kwanza ya kozi.',
+    icon: '💻',
+    xpBonus: 100,
+    category: 'learning',
+    requiredCount: 1,
+    badgeLevel: 'Bronze'
+  },
+  {
+    id: 'bdg-quiz-master',
+    title: 'Mtihani Master',
+    titleSw: 'Mtihani Master',
+    desc: 'Pata alama 80%+ kwenye mtihani wowote wa majaribio na upate cheti.',
+    descSw: 'Pata alama 80%+ kwenye mtihani wa majaribio.',
+    icon: '🎯',
+    xpBonus: 200,
+    category: 'tests',
+    requiredCount: 1,
+    badgeLevel: 'Silver'
+  },
+  {
+    id: 'bdg-referral-champion',
+    title: 'Mwalishi Bora (Referral Star)',
+    titleSw: 'Mwalishi Bora',
+    desc: 'Alika marafiki 3 wajiunge na wajifunze coding kupitia kiungo chako.',
+    descSw: 'Alika marafiki 3 kupitia kiungo chako.',
+    icon: '🤝',
+    xpBonus: 300,
+    category: 'community',
+    requiredCount: 3,
+    badgeLevel: 'Gold'
+  },
+  {
+    id: 'bdg-dev-creator',
+    title: 'Developer Mchapishaji',
+    titleSw: 'Developer Mchapishaji',
+    desc: 'Tuma au chapisha App yako ya kwanza kwenye CodZnz Store.',
+    descSw: 'Chapisha App yako ya kwanza kwenye jukwaa.',
+    icon: '⚡',
+    xpBonus: 500,
+    category: 'developer',
+    requiredCount: 1,
+    badgeLevel: 'Gold'
+  },
+  {
+    id: 'bdg-streak-7',
+    title: 'Moto wa Kujifunza (7-Day Streak)',
+    titleSw: 'Moto wa Kujifunza',
+    desc: 'Ingia na ujifunze kwa siku 7 mfululizo bila kukosa hata siku moja.',
+    descSw: 'Jifunze kwa siku 7 mfululizo.',
+    icon: '🔥',
+    xpBonus: 250,
+    category: 'streak',
+    requiredCount: 7,
+    badgeLevel: 'Diamond'
   }
 ];

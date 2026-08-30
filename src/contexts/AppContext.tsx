@@ -2,7 +2,23 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, ADMIN_EMAIL } from '../services/firebase';
-import { UserProfile, ContentItem, CodApp, Banner, Order, Review, Discussion, AppNotification, SiteSettings, UssdSettings } from '../types';
+import { 
+  UserProfile, 
+  ContentItem, 
+  CodApp, 
+  Banner, 
+  Order, 
+  Review, 
+  Discussion, 
+  AppNotification, 
+  SiteSettings, 
+  UssdSettings,
+  DeveloperPackage,
+  DeveloperApplication,
+  LearningBundle,
+  Coupon,
+  AchievementBadge
+} from '../types';
 import { 
   SEED_COURSES, 
   SEED_TESTS, 
@@ -12,7 +28,12 @@ import {
   SEED_REVIEWS, 
   SEED_NOTIFICATIONS, 
   SEED_DISCUSSIONS,
-  SEED_ORDERS
+  SEED_ORDERS,
+  SEED_DEVELOPER_PACKAGES,
+  SEED_DEVELOPER_APPLICATIONS,
+  SEED_BUNDLES,
+  SEED_COUPONS,
+  SEED_ACHIEVEMENT_BADGES
 } from '../constants';
 
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -60,6 +81,13 @@ interface AppState {
   strk: number;
   siteSettings: SiteSettings;
   ussdSettings: UssdSettings;
+  developerPackages: DeveloperPackage[];
+  developerApplications: DeveloperApplication[];
+  bundles: LearningBundle[];
+  coupons: Coupon[];
+  appliedCoupon: Coupon | null;
+  badges: AchievementBadge[];
+  unlockedBadges: string[];
 }
 
 interface AppContextType extends AppState {
@@ -95,6 +123,26 @@ interface AppContextType extends AppState {
   updateBanners: (banners: Banner[]) => void;
   updateSiteSettings: (settings: Partial<SiteSettings>) => Promise<boolean>;
   updateUssdSettings: (settings: Partial<UssdSettings>) => Promise<boolean>;
+  // Developer Management & Packages
+  applyForDeveloper: (data: { packageId: string; packageName: string; packagePrice: number; userPhone: string; devBio?: string; portfolioUrl?: string; paymentRef?: string }) => Promise<boolean>;
+  approveDeveloperApplication: (appId: string) => Promise<boolean>;
+  rejectDeveloperApplication: (appId: string, reason?: string) => Promise<boolean>;
+  addDeveloperPackage: (pkg: Omit<DeveloperPackage, 'id'>) => void;
+  updateDeveloperPackage: (id: string, pkg: Partial<DeveloperPackage>) => void;
+  deleteDeveloperPackage: (id: string) => void;
+  // Bundles & Learning Paths
+  buyBundle: (bundleId: string, paymentMethod?: string, phone?: string) => Promise<string>;
+  updateBundles: (bundles: LearningBundle[]) => void;
+  // Coupons & Promo Codes
+  addCoupon: (coupon: Omit<Coupon, 'id' | 'createdAt' | 'usedCount'>) => void;
+  updateCoupon: (id: string, data: Partial<Coupon>) => void;
+  deleteCoupon: (id: string) => void;
+  applyCouponCode: (code: string, currentTotal: number, itemIds: string[]) => { success: boolean; discountAmount: number; finalTotal: number; message: string; coupon?: Coupon };
+  clearAppliedCoupon: () => void;
+  // Referral System & Badges
+  claimReferral: (code: string) => Promise<{ success: boolean; message: string }>;
+  unlockBadge: (badgeId: string) => void;
+  triggerDirectUssdPush: (phone: string, amount: number, providerName: string) => Promise<{ success: boolean; ref: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -149,6 +197,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     strk: Number(localStorage.getItem('czp_strk') || '2'),
     siteSettings: JSON.parse(localStorage.getItem('czp_site_settings') || 'null') || DEFAULT_SITE_SETTINGS,
     ussdSettings: JSON.parse(localStorage.getItem('czp_ussd_settings') || 'null') || DEFAULT_USSD_SETTINGS,
+    developerPackages: JSON.parse(localStorage.getItem('czp_dev_pkgs') || 'null') || SEED_DEVELOPER_PACKAGES,
+    developerApplications: JSON.parse(localStorage.getItem('czp_dev_apps') || 'null') || SEED_DEVELOPER_APPLICATIONS,
+    bundles: JSON.parse(localStorage.getItem('czp_bundles') || 'null') || SEED_BUNDLES,
+    coupons: JSON.parse(localStorage.getItem('czp_coupons') || 'null') || SEED_COUPONS,
+    appliedCoupon: null,
+    badges: SEED_ACHIEVEMENT_BADGES,
+    unlockedBadges: JSON.parse(localStorage.getItem('czp_unlocked_badges') || '["bdg-welcome"]')
   });
 
   // Dynamic CSS variables for primary and accent brand colors
@@ -674,6 +729,470 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateApps = (apps: CodApp[]) => setState(p => ({ ...p, apps }));
   const updateBanners = (banners: Banner[]) => setState(p => ({ ...p, banners }));
 
+  // --- 1. DEVELOPER MANAGEMENT & PACKAGES ---
+  const applyForDeveloper = async (data: { 
+    packageId: string; 
+    packageName: string; 
+    packagePrice: number; 
+    userPhone: string; 
+    devBio?: string; 
+    portfolioUrl?: string; 
+    paymentRef?: string 
+  }): Promise<boolean> => {
+    try {
+      const newAppId = 'dev-app-' + Date.now();
+      const currentUid = state.user?.uid || 'guest-' + Date.now();
+      const currentName = state.profile?.name || state.user?.displayName || state.user?.email?.split('@')[0] || 'Developer';
+      const currentEmail = state.profile?.email || state.user?.email || 'dev@codznz.com';
+
+      const newApplication: DeveloperApplication = {
+        id: newAppId,
+        userId: currentUid,
+        userName: currentName,
+        userEmail: currentEmail,
+        userPhone: data.userPhone,
+        packageId: data.packageId,
+        packageName: data.packageName,
+        packagePrice: data.packagePrice,
+        paymentRef: data.paymentRef,
+        status: 'pending',
+        portfolioUrl: data.portfolioUrl,
+        devBio: data.devBio,
+        appliedAt: Date.now()
+      };
+
+      setState(prev => {
+        const updatedApps = [newApplication, ...prev.developerApplications];
+        localStorage.setItem('czp_dev_apps', JSON.stringify(updatedApps));
+        
+        let newProfile = prev.profile;
+        if (newProfile) {
+          newProfile = {
+            ...newProfile,
+            developerStatus: 'pending',
+            developerPackageId: data.packageId,
+            phone: data.userPhone || newProfile.phone
+          };
+          localStorage.setItem('czp_profile', JSON.stringify(newProfile));
+        }
+
+        return {
+          ...prev,
+          developerApplications: updatedApps,
+          profile: newProfile,
+          notifications: [
+            {
+              id: 'notif-dev-' + Date.now(),
+              title: 'Ombi la Developer Limetumwa! 💻',
+              message: `Ombi lako la kifurushi cha "${data.packageName}" limepokelewa na linakaguliwa na msimamizi.`,
+              type: 'info',
+              createdAt: Date.now(),
+              read: false
+            },
+            ...prev.notifications
+          ]
+        };
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error applying for developer:', err);
+      return false;
+    }
+  };
+
+  const approveDeveloperApplication = async (appId: string): Promise<boolean> => {
+    try {
+      setState(prev => {
+        const targetApp = prev.developerApplications.find(a => a.id === appId);
+        if (!targetApp) return prev;
+
+        const updatedDevApps = prev.developerApplications.map(a => 
+          a.id === appId ? { ...a, status: 'approved' as const, reviewedAt: Date.now() } : a
+        );
+        localStorage.setItem('czp_dev_apps', JSON.stringify(updatedDevApps));
+
+        // Update target user's role and developer status
+        const updatedUsers = prev.users.map(u => {
+          if (u.uid === targetApp.userId || u.email === targetApp.userEmail) {
+            return {
+              ...u,
+              role: 'developer' as const,
+              developerStatus: 'approved' as const,
+              developerPackageId: targetApp.packageId,
+              developerExpiresAt: Date.now() + 86400000 * 365
+            };
+          }
+          return u;
+        });
+        localStorage.setItem('czp_users', JSON.stringify(updatedUsers));
+
+        let newProfile = prev.profile;
+        if (newProfile && (newProfile.uid === targetApp.userId || newProfile.email === targetApp.userEmail)) {
+          newProfile = {
+            ...newProfile,
+            role: 'developer',
+            developerStatus: 'approved',
+            developerPackageId: targetApp.packageId,
+            developerExpiresAt: Date.now() + 86400000 * 365
+          };
+          localStorage.setItem('czp_profile', JSON.stringify(newProfile));
+        }
+
+        return {
+          ...prev,
+          developerApplications: updatedDevApps,
+          users: updatedUsers,
+          profile: newProfile,
+          notifications: [
+            {
+              id: 'notif-appr-dev-' + Date.now(),
+              title: 'Ombi la Developer Limekubaliwa! 🎉',
+              message: `Hongera ${targetApp.userName}! Umewezeshwa kuwa Developer Rasmi kwenye CodZnz Studio.`,
+              type: 'success',
+              actionText: 'Fungua Developer Studio',
+              actionUrl: '#dev',
+              createdAt: Date.now(),
+              read: false
+            },
+            ...prev.notifications
+          ]
+        };
+      });
+      return true;
+    } catch (err) {
+      console.error('Error approving dev application:', err);
+      return false;
+    }
+  };
+
+  const rejectDeveloperApplication = async (appId: string, reason?: string): Promise<boolean> => {
+    try {
+      setState(prev => {
+        const targetApp = prev.developerApplications.find(a => a.id === appId);
+        const updatedDevApps = prev.developerApplications.map(a => 
+          a.id === appId ? { ...a, status: 'rejected' as const, rejectionReason: reason || 'Ombi halijakidhi vigezo kwa sasa.', reviewedAt: Date.now() } : a
+        );
+        localStorage.setItem('czp_dev_apps', JSON.stringify(updatedDevApps));
+
+        let newProfile = prev.profile;
+        if (newProfile && targetApp && (newProfile.uid === targetApp.userId || newProfile.email === targetApp.userEmail)) {
+          newProfile = {
+            ...newProfile,
+            developerStatus: 'rejected'
+          };
+          localStorage.setItem('czp_profile', JSON.stringify(newProfile));
+        }
+
+        return {
+          ...prev,
+          developerApplications: updatedDevApps,
+          profile: newProfile,
+          notifications: [
+            {
+              id: 'notif-rej-dev-' + Date.now(),
+              title: 'Taarifa Kuhusu Ombi la Developer',
+              message: `Ombi lako la developer halikuidhinishwa: ${reason || 'Wasiliana na msimamizi kwa maelezo zaidi.'}`,
+              type: 'alert',
+              createdAt: Date.now(),
+              read: false
+            },
+            ...prev.notifications
+          ]
+        };
+      });
+      return true;
+    } catch (err) {
+      console.error('Error rejecting dev app:', err);
+      return false;
+    }
+  };
+
+  const addDeveloperPackage = (pkg: Omit<DeveloperPackage, 'id'>) => {
+    const newPkg: DeveloperPackage = {
+      ...pkg,
+      id: 'pkg-' + Date.now()
+    };
+    setState(p => {
+      const updated = [...p.developerPackages, newPkg];
+      localStorage.setItem('czp_dev_pkgs', JSON.stringify(updated));
+      return { ...p, developerPackages: updated };
+    });
+  };
+
+  const updateDeveloperPackage = (id: string, pkg: Partial<DeveloperPackage>) => {
+    setState(p => {
+      const updated = p.developerPackages.map(x => x.id === id ? { ...x, ...pkg } : x);
+      localStorage.setItem('czp_dev_pkgs', JSON.stringify(updated));
+      return { ...p, developerPackages: updated };
+    });
+  };
+
+  const deleteDeveloperPackage = (id: string) => {
+    setState(p => {
+      const updated = p.developerPackages.filter(x => x.id !== id);
+      localStorage.setItem('czp_dev_pkgs', JSON.stringify(updated));
+      return { ...p, developerPackages: updated };
+    });
+  };
+
+  // --- 2. BUNDLES & LEARNING PATHS ---
+  const buyBundle = async (bundleId: string, paymentMethod: string = 'mpesa', phone: string = ''): Promise<string> => {
+    const targetBundle = state.bundles.find(b => b.id === bundleId);
+    if (!targetBundle) throw new Error('Bundle not found');
+
+    const orderId = 'ord-bnd-' + Date.now();
+    const orderData: Order = {
+      id: orderId,
+      userId: state.user?.uid || 'guest-' + Date.now(),
+      userName: state.profile?.name || state.user?.displayName || 'Mwanafunzi',
+      userEmail: state.profile?.email || state.user?.email || 'mwanafunzi@codznz.com',
+      itemIds: targetBundle.courseIds,
+      ref: `BND${Math.floor(100000 + Math.random() * 900000)}TZ`,
+      amount: targetBundle.price,
+      status: 'confirmed',
+      paymentMethod: paymentMethod as any,
+      phoneNumber: phone || state.profile?.phone || '0754000000',
+      createdAt: Date.now()
+    };
+
+    setState(prev => {
+      const newOrders = [orderData, ...prev.orders];
+      const newLib = { ...prev.lib };
+      targetBundle.courseIds.forEach(id => { newLib[id] = true; });
+      localStorage.setItem('czp_orders', JSON.stringify(newOrders));
+      localStorage.setItem('czp_local_lib', JSON.stringify(newLib));
+
+      return {
+        ...prev,
+        orders: newOrders,
+        lib: newLib,
+        pts: prev.pts + 300,
+        notifications: [
+          {
+            id: 'notif-bnd-' + Date.now(),
+            title: `Hongera! Umenunua "${targetBundle.title}" 🎉`,
+            message: `Masomo yote ${targetBundle.courseIds.length} ya mkusanyiko huu yamefunguliwa kwenye Library yako papo hapo.`,
+            type: 'success',
+            createdAt: Date.now(),
+            read: false
+          },
+          ...prev.notifications
+        ]
+      };
+    });
+
+    return orderId;
+  };
+
+  const updateBundles = (bundles: LearningBundle[]) => {
+    setState(p => {
+      localStorage.setItem('czp_bundles', JSON.stringify(bundles));
+      return { ...p, bundles };
+    });
+  };
+
+  // --- 3. COUPONS & PROMOS ---
+  const addCoupon = (coupon: Omit<Coupon, 'id' | 'createdAt' | 'usedCount'>) => {
+    const newCoupon: Coupon = {
+      ...coupon,
+      id: 'cpn-' + Date.now(),
+      usedCount: 0,
+      createdAt: Date.now()
+    };
+    setState(p => {
+      const updated = [newCoupon, ...p.coupons];
+      localStorage.setItem('czp_coupons', JSON.stringify(updated));
+      return { ...p, coupons: updated };
+    });
+  };
+
+  const updateCoupon = (id: string, data: Partial<Coupon>) => {
+    setState(p => {
+      const updated = p.coupons.map(c => c.id === id ? { ...c, ...data } : c);
+      localStorage.setItem('czp_coupons', JSON.stringify(updated));
+      return { ...p, coupons: updated };
+    });
+  };
+
+  const deleteCoupon = (id: string) => {
+    setState(p => {
+      const updated = p.coupons.filter(c => c.id !== id);
+      localStorage.setItem('czp_coupons', JSON.stringify(updated));
+      return { ...p, coupons: updated };
+    });
+  };
+
+  const applyCouponCode = (
+    code: string, 
+    currentTotal: number, 
+    itemIds: string[]
+  ): { success: boolean; discountAmount: number; finalTotal: number; message: string; coupon?: Coupon } => {
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = state.coupons.find(c => c.code.toUpperCase() === cleanCode && c.active);
+
+    if (!coupon) {
+      return {
+        success: false,
+        discountAmount: 0,
+        finalTotal: currentTotal,
+        message: state.lang === 'en' ? 'Invalid or inactive coupon code.' : 'Msimbo wa kuponi si sahihi au umezimwa.'
+      };
+    }
+
+    if (coupon.expiresAt && coupon.expiresAt < Date.now()) {
+      return {
+        success: false,
+        discountAmount: 0,
+        finalTotal: currentTotal,
+        message: state.lang === 'en' ? 'This coupon has expired.' : 'Kuponi hii imekwisha muda wake.'
+      };
+    }
+
+    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+      return {
+        success: false,
+        discountAmount: 0,
+        finalTotal: currentTotal,
+        message: state.lang === 'en' ? 'Coupon usage limit reached.' : 'Kuponi hii imemaliza idadi ya matumizi.'
+      };
+    }
+
+    // Check target restriction if any
+    if (coupon.targetType === 'single_course' && coupon.targetId && !itemIds.includes(coupon.targetId)) {
+      return {
+        success: false,
+        discountAmount: 0,
+        finalTotal: currentTotal,
+        message: state.lang === 'en' ? 'Coupon is only valid for a specific course.' : 'Kuponi hii inatumika kwenye somo maalum tu.'
+      };
+    }
+
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = Math.round((currentTotal * coupon.discountValue) / 100);
+    } else {
+      discount = Math.min(currentTotal, coupon.discountValue);
+    }
+
+    const finalTotal = Math.max(0, currentTotal - discount);
+
+    setState(prev => ({
+      ...prev,
+      appliedCoupon: coupon
+    }));
+
+    return {
+      success: true,
+      discountAmount: discount,
+      finalTotal,
+      message: state.lang === 'en' 
+        ? `Coupon applied! You saved TSh ${discount.toLocaleString()}` 
+        : `Kuponi imekubaliwa! Umeokoa TSh ${discount.toLocaleString()}`,
+      coupon
+    };
+  };
+
+  const clearAppliedCoupon = () => {
+    setState(p => ({ ...p, appliedCoupon: null }));
+  };
+
+  // --- 4. REFERRALS & BADGES ---
+  const claimReferral = async (code: string): Promise<{ success: boolean; message: string }> => {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false, message: 'Weka msimbo sahihi wa mwaliko.' };
+    }
+
+    // Check if user already claimed
+    if (state.profile?.referredBy) {
+      return { success: false, message: 'Umeshawahi kutumia msimbo wa mwaliko hapo awali.' };
+    }
+
+    // User gets 100 XP, and referrer gets 150 XP
+    setState(prev => {
+      const bonusUserPts = 100;
+      const newPts = prev.pts + bonusUserPts;
+      localStorage.setItem('czp_pts', newPts.toString());
+
+      let newProfile = prev.profile;
+      if (newProfile) {
+        newProfile = {
+          ...newProfile,
+          referredBy: cleanCode,
+          points: (newProfile.points || 0) + bonusUserPts
+        };
+        localStorage.setItem('czp_profile', JSON.stringify(newProfile));
+      }
+
+      return {
+        ...prev,
+        pts: newPts,
+        profile: newProfile,
+        notifications: [
+          {
+            id: 'notif-ref-' + Date.now(),
+            title: 'Pointi za Mwaliko Zimeongezwa! 🎁',
+            message: `Hongera! Umepata pointi +${bonusUserPts} XP kwa kutumia msimbo wa mwaliko ${cleanCode}.`,
+            type: 'success',
+            createdAt: Date.now(),
+            read: false
+          },
+          ...prev.notifications
+        ]
+      };
+    });
+
+    return {
+      success: true,
+      message: 'Hongera! Umepata +100 XP pointi za bure za mwaliko.'
+    };
+  };
+
+  const unlockBadge = (badgeId: string) => {
+    if (state.unlockedBadges.includes(badgeId)) return;
+    const badge = state.badges.find(b => b.id === badgeId);
+
+    setState(prev => {
+      const updatedUnlocked = [...prev.unlockedBadges, badgeId];
+      localStorage.setItem('czp_unlocked_badges', JSON.stringify(updatedUnlocked));
+      const bonusXp = badge?.xpBonus || 100;
+      const newPts = prev.pts + bonusXp;
+      localStorage.setItem('czp_pts', newPts.toString());
+
+      return {
+        ...prev,
+        unlockedBadges: updatedUnlocked,
+        pts: newPts,
+        notifications: [
+          {
+            id: 'notif-bdg-' + Date.now(),
+            title: `Beji Mpya Imefunguliwa! 🏆 ${badge?.title || 'Bingwa'}`,
+            message: `Hongera! Umepata beji mpya na pointi +${bonusXp} XP za zawadi.`,
+            type: 'success',
+            createdAt: Date.now(),
+            read: false
+          },
+          ...prev.notifications
+        ]
+      };
+    });
+  };
+
+  // --- 5. DIRECT USSD PUSH ---
+  const triggerDirectUssdPush = async (phone: string, amount: number, providerName: string): Promise<{ success: boolean; ref: string }> => {
+    // Generates simulated live USSD push prompt
+    const generatedRef = `${providerName.slice(0, 3).toUpperCase()}${Math.floor(100000 + Math.random() * 900000)}TZ`;
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          ref: generatedRef
+        });
+      }, 1500);
+    });
+  };
+
   return (
     <AppContext.Provider 
       value={{ 
@@ -712,7 +1231,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateApps,
         updateBanners,
         updateSiteSettings,
-        updateUssdSettings
+        updateUssdSettings,
+        applyForDeveloper,
+        approveDeveloperApplication,
+        rejectDeveloperApplication,
+        addDeveloperPackage,
+        updateDeveloperPackage,
+        deleteDeveloperPackage,
+        buyBundle,
+        updateBundles,
+        addCoupon,
+        updateCoupon,
+        deleteCoupon,
+        applyCouponCode,
+        clearAppliedCoupon,
+        claimReferral,
+        unlockBadge,
+        triggerDirectUssdPush
       }}
     >
       {children}

@@ -78,6 +78,7 @@ export interface ContentItem {
   pdfPath?: string;
   coverB64?: string;
   icon: string;
+  rating?: string | number;
   createdAt: number;
   updatedAt?: number;
   questions?: Question[]; // For tests
@@ -115,6 +116,91 @@ export interface UserProfile {
   completedEpisodes?: Record<string, boolean>;
   status: 'Active' | 'Blocked';
   role?: UserRole;
+  developerStatus?: 'none' | 'pending' | 'approved' | 'rejected' | 'suspended';
+  developerPackageId?: string;
+  developerExpiresAt?: number;
+  referralCode?: string;
+  referredBy?: string;
+  referralCount?: number;
+  referralPointsEarned?: number;
+  unlockedBadges?: string[];
+}
+
+export interface DeveloperPackage {
+  id: string;
+  name: string;
+  description?: string;
+  desc?: string;
+  price: number;
+  durationDays?: number;
+  billingCycle?: 'monthly' | 'yearly' | 'lifetime' | 'one-time';
+  features: string[];
+  maxApps: number;
+  badge?: string;
+  active: boolean;
+  revenueSharePct?: number;
+  isPopular?: boolean;
+}
+
+export interface DeveloperApplication {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  packageId: string;
+  packageName: string;
+  packagePrice: number;
+  paymentRef?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  portfolioUrl?: string;
+  devBio?: string;
+  appliedAt: number;
+  reviewedAt?: number;
+  rejectionReason?: string;
+}
+
+export interface LearningBundle {
+  id: string;
+  title: string;
+  desc: string;
+  icon: string;
+  coverImg?: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
+  duration: string;
+  courseIds: string[];
+  price: number;
+  originalPrice: number;
+  badge?: string;
+  skills: string[];
+  createdAt: number;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  targetType: 'all' | 'single_course' | 'single_app' | 'bundles';
+  targetId?: string;
+  expiresAt: number;
+  maxUses?: number;
+  usedCount: number;
+  active: boolean;
+  createdAt: number;
+}
+
+export interface AchievementBadge {
+  id: string;
+  title: string;
+  titleSw: string;
+  desc: string;
+  descSw: string;
+  icon: string;
+  xpBonus: number;
+  category: 'learning' | 'tests' | 'community' | 'developer' | 'streak';
+  requiredCount: number;
+  badgeLevel: 'Bronze' | 'Silver' | 'Gold' | 'Diamond';
 }
 
 export interface Banner {

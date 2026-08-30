@@ -32,10 +32,16 @@ import {
   Check, 
   Search,
   UploadCloud,
-  Play
+  Play,
+  Lock,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  UserCheck,
+  Send
 } from 'lucide-react';
 import { cn, formatPrice } from '../lib/utils';
-import { ContentItem, CodApp, Episode, Question, AppScreenshot } from '../types';
+import { ContentItem, CodApp, Episode, Question, AppScreenshot, DeveloperPackage } from '../types';
 import { 
   SEED_COURSES, 
   SEED_TESTS, 
@@ -64,16 +70,298 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
     updateLectures, 
     updateApps,
     addPoints,
-    orders
+    orders,
+    developerPackages,
+    developerApplications,
+    applyForDeveloper,
+    triggerDirectUssdPush
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<CreatorTab>('app');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Application / Subscription Form State
+  const [selectedPkg, setSelectedPkg] = useState<DeveloperPackage | null>(
+    developerPackages.find(p => p.isPopular) || developerPackages[0] || null
+  );
+  const [devPhone, setDevPhone] = useState(profile?.phone || '0754000000');
+  const [devBio, setDevBio] = useState('');
+  const [devPortfolio, setDevPortfolio] = useState('https://github.com');
+  const [devPaymentRef, setDevPaymentRef] = useState('');
+  const [submittingApp, setSubmittingApp] = useState(false);
+  const [ussdPushActive, setUssdPushActive] = useState(false);
+  const [ussdPushSuccess, setUssdPushSuccess] = useState(false);
+
+  // Check if current user is approved
+  const isApprovedDev = isAdm || profile?.role === 'developer' || profile?.developerStatus === 'approved';
+  
+  // Find current user's latest application if any
+  const userApp = developerApplications.find(
+    a => a.userId === user?.uid || (user?.email && a.userEmail === user.email)
+  );
+
+  const handleApplyDeveloper = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPkg) return;
+
+    setSubmittingApp(true);
+    let finalRef = devPaymentRef;
+
+    if (selectedPkg.price > 0 && !finalRef) {
+      // Trigger USSD push
+      setUssdPushActive(true);
+      const ussdRes = await triggerDirectUssdPush(devPhone, selectedPkg.price, 'M-Pesa');
+      finalRef = ussdRes.ref;
+      setUssdPushActive(false);
+      setUssdPushSuccess(true);
+    }
+
+    const success = await applyForDeveloper({
+      packageId: selectedPkg.id,
+      packageName: selectedPkg.name,
+      packagePrice: selectedPkg.price,
+      userPhone: devPhone,
+      devBio,
+      portfolioUrl: devPortfolio,
+      paymentRef: finalRef || 'FREE_STARTER'
+    });
+
+    setSubmittingApp(false);
+    if (success) {
+      showNotification(lang === 'en' ? 'Developer application submitted for Admin approval!' : 'Ombi la Developer limetumwa kwa Msimamizi!');
+    }
+  };
+
   const showNotification = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
+
+  // --- ACCESS GATE VIEW (FOR REGULAR USERS WHO HAVEN'T BEEN APPROVED BY ADMIN) ---
+  if (!isApprovedDev) {
+    return (
+      <div className="page-anim space-y-6 max-w-4xl mx-auto pb-12">
+        {/* Gate Hero */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 border border-indigo-500/30 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
+          <div className="relative z-10 space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold">
+              <Lock size={14} className="text-amber-400" />
+              <span>{lang === 'en' ? 'Admin Verified Developer Access' : 'Idhini ya Msimamizi ya Developer'}</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-white">
+              {lang === 'en' ? 'Unlock Developer Studio & Monetize Apps' : 'Fungua Developer Studio & Weka Apps Zako Sokoni'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+              {lang === 'en'
+                ? 'To ensure software security and quality, all developers must choose an access package and be approved by the Admin. Once approved, you can publish apps, courses, and receive 80% revenue share via M-Pesa USSD.'
+                : 'Ili kudumisha ubora na usalama wa mifumo, wasanidi wote huchagua kifurushi cha kujiunga na kuidhinishwa na Msimamizi. Ukikubaliwa, unaweza kupakia programu, kozi na kupokea asilimia 80 ya mapato moja kwa moja.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Existing Application Status Banner */}
+        {userApp && userApp.status === 'pending' && (
+          <div className="p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3.5 text-amber-200">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Clock size={20} className="animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-amber-300">
+                {lang === 'en' ? 'Application Under Review ⏳' : 'Ombi Lako Linakaguliwa na Msimamizi ⏳'}
+              </h4>
+              <p className="text-xs leading-relaxed text-amber-200/90">
+                {lang === 'en'
+                  ? `Your developer request for "${userApp.packageName}" is currently being verified by the administrator. You will receive an instant notification once approved.`
+                  : `Ombi lako la kifurushi cha "${userApp.packageName}" linakaguliwa. Msimamizi akithibitisha, utapewa taarifa mara moja na dashibodi itafunguka.`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {userApp && userApp.status === 'rejected' && (
+          <div className="p-5 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3.5 text-rose-200">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertCircle size={20} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-rose-300">
+                {lang === 'en' ? 'Application Status' : 'Taarifa ya Ombi'}
+              </h4>
+              <p className="text-xs leading-relaxed text-rose-200/90">
+                {userApp.rejectionReason || 'Ombi lililopita halikukidhi vigezo. Unaweza kuchagua kifurushi na kuomba upya hapa chini.'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Developer Packages Selection Grid */}
+        <div className="space-y-4">
+          <div className="text-center sm:text-left">
+            <h3 className="text-base font-black text-text1">
+              {lang === 'en' ? '1. Select Developer Membership Package' : '1. Chagua Kifurushi cha Uanachama wa Developer'}
+            </h3>
+            <p className="text-xs text-text3">
+              {lang === 'en' ? 'Admin-managed packages with dedicated publisher privileges' : 'Vifurushi vilivyowekwa na msimamizi vyenye ruhusa rasmi za kuchapisha'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {developerPackages.map(pkg => {
+              const isSelected = selectedPkg?.id === pkg.id;
+
+              return (
+                <div
+                  key={pkg.id}
+                  onClick={() => setSelectedPkg(pkg)}
+                  className={`p-5 rounded-3xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                    isSelected 
+                      ? 'bg-card border-primary ring-2 ring-primary/30 shadow-xl scale-[1.02]' 
+                      : 'bg-card2/60 border-theme hover:border-text3/40'
+                  }`}
+                >
+                  {pkg.isPopular && (
+                    <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md">
+                      POPULAR
+                    </span>
+                  )}
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-sm text-text1">{pkg.name}</h4>
+                      <span className="text-[10px] font-bold text-text3 bg-card px-2 py-0.5 rounded-full border border-theme">
+                        {pkg.billingCycle}
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-primary">
+                        {pkg.price === 0 ? 'FREE' : formatPrice(pkg.price)}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-text2 leading-snug">
+                      {pkg.desc}
+                    </p>
+
+                    <div className="space-y-1.5 pt-2 border-t border-theme">
+                      {pkg.features.map((feat, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-text2">
+                          <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                          <span>{feat}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 mt-4 border-t border-theme">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPkg(pkg)}
+                      className={`w-full h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                        isSelected 
+                          ? 'bg-primary text-white shadow-md' 
+                          : 'bg-card border border-theme text-text2 hover:text-text1'
+                      }`}
+                    >
+                      {isSelected ? <Check size={14} /> : null}
+                      <span>{isSelected ? (lang === 'en' ? 'Selected' : 'Umechagua') : (lang === 'en' ? 'Select Package' : 'Chagua')}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Application Form */}
+        {selectedPkg && (
+          <form onSubmit={handleApplyDeveloper} className="bg-card border border-theme rounded-3xl p-5 sm:p-7 shadow-lg space-y-4">
+            <h3 className="text-base font-black text-text1 flex items-center gap-2">
+              <UserCheck size={18} className="text-primary" />
+              <span>{lang === 'en' ? '2. Submit Developer Application' : '2. Kamilisha Ombi Lako kwa Msimamizi'}</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-text2">
+                  {lang === 'en' ? 'M-Pesa / Tigo Pesa Phone Number' : 'Namba ya Simu (M-Pesa / Tigo / Airtel)'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={devPhone}
+                  onChange={(e) => setDevPhone(e.target.value)}
+                  placeholder="0754000000"
+                  className="w-full h-11 px-3.5 bg-card2 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-text2">
+                  {lang === 'en' ? 'Portfolio or GitHub URL' : 'Kiungo cha Portfolio au GitHub'}
+                </label>
+                <input
+                  type="url"
+                  value={devPortfolio}
+                  onChange={(e) => setDevPortfolio(e.target.value)}
+                  placeholder="https://github.com/username"
+                  className="w-full h-11 px-3.5 bg-card2 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-text2">
+                {lang === 'en' ? 'Developer Bio / Experience' : 'Maelezo Mafupi ya Uzoefu wako'}
+              </label>
+              <textarea
+                rows={2}
+                value={devBio}
+                onChange={(e) => setDevBio(e.target.value)}
+                placeholder="Mfano: Nina uzoefu wa miaka 2 katika React, Node.js na Flutter..."
+                className="w-full p-3 bg-card2 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary resize-none"
+              />
+            </div>
+
+            {/* USSD Direct Push Notice */}
+            {selectedPkg.price > 0 && (
+              <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <Zap size={16} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-text1">{lang === 'en' ? 'Direct USSD Push Payment' : 'Malipo ya Moja kwa Moja ya USSD Push'}</span>
+                    <p className="text-[11px] text-text3">
+                      {lang === 'en' ? `Auto prompt of ${formatPrice(selectedPkg.price)} will be sent to ${devPhone}` : `Utatumiwa ujumbe wa PIN wa ${formatPrice(selectedPkg.price)} kwenye simu yako ${devPhone}`}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-primary shrink-0">{formatPrice(selectedPkg.price)}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={submittingApp || ussdPushActive}
+              className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 active:scale-95 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all"
+            >
+              {submittingApp ? (
+                <span>{lang === 'en' ? 'Processing Application...' : 'Inatuma ombi...'}</span>
+              ) : (
+                <>
+                  <Send size={16} />
+                  <span>{lang === 'en' ? `Submit Application & Request Access (${formatPrice(selectedPkg.price)})` : `Tuma Ombi & Lipia Kifurushi (${formatPrice(selectedPkg.price)})`}</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
+
+  // --- FULL CREATOR STUDIO (FOR APPROVED DEVELOPERS & ADMIN) ---
 
   // -------------------------------------------------------------
   // 1. STATE: PUBLISH APP FORM

@@ -17,19 +17,25 @@ import {
   Moon, 
   Maximize2,
   Sparkles,
-  UserCheck
+  UserCheck,
+  Star
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
 
 export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => void }> = ({ item, onClose }) => {
-  const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang } = useApp();
+  const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang, reviews, addReview } = useApp();
   const [currIdx, setCurrIdx] = useState(0);
-  const [activeTab, setActiveTab] = useState<'playlist' | 'qa' | 'notes'>('playlist');
+  const [activeTab, setActiveTab] = useState<'playlist' | 'qa' | 'notes' | 'reviews'>('playlist');
   const [newQuestion, setNewQuestion] = useState('');
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [note, setNote] = useState(() => localStorage.getItem(`note_${item.id}_${currIdx}`) || '');
   const [noteSaved, setNoteSaved] = useState(false);
+
+  // Review Form State
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   const episodes = item.episodes || [];
   const currEp = episodes[currIdx];
@@ -39,6 +45,10 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
   const progress = episodes.length > 0 ? Math.round((completedCount / episodes.length) * 100) : 0;
 
   const itemDiscussions = discussions.filter(d => d.itemId === item.id || !d.itemId);
+  const itemReviews = reviews.filter(r => r.itemId === item.id);
+  const avgRating = itemReviews.length > 0
+    ? (itemReviews.reduce((sum, r) => sum + r.rating, 0) / itemReviews.length).toFixed(1)
+    : (item.rating || '4.9');
 
   const handleSaveNote = () => {
     localStorage.setItem(`note_${item.id}_${currIdx}`, note);
@@ -58,6 +68,23 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
     if (!text || !text.trim()) return;
     addDiscussionReply(discId, text.trim());
     setReplyText(p => ({ ...p, [discId]: '' }));
+  };
+
+  const handlePostReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewComment.trim()) return;
+
+    addReview({
+      itemId: item.id,
+      userId: user?.uid || 'guest',
+      userName: user?.displayName || user?.email?.split('@')[0] || 'Mwanafunzi',
+      rating: reviewRating,
+      comment: reviewComment.trim()
+    });
+
+    setReviewComment('');
+    setReviewSubmitted(true);
+    setTimeout(() => setReviewSubmitted(false), 3000);
   };
 
   return (
@@ -106,11 +133,11 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 bg-black/40 px-4 shrink-0">
+      <div className="flex border-b border-white/10 bg-black/40 px-4 shrink-0 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab('playlist')}
           className={cn(
-            "py-3 px-4 text-xs font-bold transition-all border-b-2",
+            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap",
             activeTab === 'playlist' ? "border-primary text-white" : "border-transparent text-white/50 hover:text-white/80"
           )}
         >
@@ -119,7 +146,7 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
         <button
           onClick={() => setActiveTab('qa')}
           className={cn(
-            "py-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5",
+            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
             activeTab === 'qa' ? "border-primary text-white" : "border-transparent text-white/50 hover:text-white/80"
           )}
         >
@@ -127,9 +154,20 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
           <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full">{itemDiscussions.length}</span>
         </button>
         <button
+          onClick={() => setActiveTab('reviews')}
+          className={cn(
+            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
+            activeTab === 'reviews' ? "border-amber-400 text-amber-300" : "border-transparent text-white/50 hover:text-white/80"
+          )}
+        >
+          <Star size={12} className="text-amber-400" fill="currentColor" />
+          <span>{lang === 'en' ? 'Reviews' : 'Maoni & Nyota'}</span>
+          <span className="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded-full">{avgRating} ★</span>
+        </button>
+        <button
           onClick={() => setActiveTab('notes')}
           className={cn(
-            "py-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5",
+            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
             activeTab === 'notes' ? "border-primary text-white" : "border-transparent text-white/50 hover:text-white/80"
           )}
         >
@@ -222,6 +260,111 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Reviews Tab */}
+        {activeTab === 'reviews' && (
+          <div className="space-y-4">
+            {/* Average Rating Banner */}
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-amber-300 font-black text-xl">
+                  <span>{avgRating}</span>
+                  <div className="flex text-amber-400">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <Star key={idx} size={14} fill={idx < Math.round(Number(avgRating)) ? "currentColor" : "none"} />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-300 mt-0.5">
+                  {itemReviews.length} {lang === 'en' ? 'verified student reviews' : 'maoni ya wanafunzi'}
+                </p>
+              </div>
+              <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full">
+                {lang === 'en' ? 'Verified Course' : 'Kozi Iliyohakikiwa'}
+              </span>
+            </div>
+
+            {/* Post Review Form */}
+            <form onSubmit={handlePostReview} className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/10">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Star size={14} className="text-amber-400" />
+                  <span>{lang === 'en' ? 'Write a Review for this Course' : 'Toa Maoni & Nyota kwa Kozi Hii'}</span>
+                </label>
+                {reviewSubmitted && (
+                  <span className="text-[10px] text-ok font-bold">Maoni yametumwa! ✓</span>
+                )}
+              </div>
+
+              {/* Star Picker */}
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setReviewRating(s)}
+                    className="p-1 text-amber-400 hover:scale-125 transition-transform"
+                  >
+                    <Star size={20} fill={s <= reviewRating ? "currentColor" : "none"} />
+                  </button>
+                ))}
+                <span className="text-xs font-bold text-amber-300 ml-2">{reviewRating} / 5 Nyota</span>
+              </div>
+
+              <textarea
+                rows={3}
+                placeholder={lang === 'en' ? 'Share what you learned and how the teacher explained...' : 'Eleza ulichojifunza na jinsi mwalimu alivyofundisha somo hili...'}
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                className="w-full bg-black/50 border border-white/15 rounded-xl p-3 text-xs text-white placeholder:text-white/30 outline-none focus:border-amber-400 resize-none"
+                required
+              />
+
+              <button
+                type="submit"
+                disabled={!reviewComment.trim()}
+                className="h-10 px-5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all disabled:opacity-40"
+              >
+                <span>{lang === 'en' ? 'Submit Student Review' : 'Tuma Maoni Yangu'}</span>
+                <Send size={13} />
+              </button>
+            </form>
+
+            {/* List of Reviews */}
+            <div className="space-y-2.5">
+              <h4 className="text-[10px] uppercase font-black text-white/40 tracking-[2px]">
+                {lang === 'en' ? 'Recent Reviews' : 'Maoni ya Hivi Karibuni'}
+              </h4>
+              {itemReviews.length === 0 ? (
+                <div className="text-center py-6 text-xs text-white/40 bg-white/5 rounded-2xl border border-white/10">
+                  {lang === 'en' ? 'No reviews yet for this course. Be the first to leave feedback!' : 'Hakuna maoni bado kwa kozi hii. Kuwa wa kwanza kutoa nyota na maoni!'}
+                </div>
+              ) : (
+                itemReviews.map((r) => (
+                  <div key={r.id} className="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-300 font-black text-[10px] flex items-center justify-center">
+                          {r.userName[0]?.toUpperCase() || 'M'}
+                        </div>
+                        <span className="text-xs font-bold text-white">{r.userName}</span>
+                      </div>
+                      <div className="flex items-center text-amber-400">
+                        {Array.from({ length: r.rating }).map((_, idx) => (
+                          <Star key={idx} size={11} fill="currentColor" />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-300 leading-relaxed pl-8">{r.comment}</p>
+                    <div className="text-[9px] text-white/30 text-right font-mono">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
