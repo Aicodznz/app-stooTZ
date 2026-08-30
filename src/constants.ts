@@ -629,3 +629,455 @@ export const SEED_ACHIEVEMENT_BADGES: AchievementBadge[] = [
     badgeLevel: 'Diamond'
   }
 ];
+
+// --- SEED CODE PLAYGROUND TEMPLATES ---
+export const SEED_PLAYGROUND_TEMPLATES = [
+  {
+    id: 'tmpl-counter',
+    title: 'Counter App (HTML + CSS + JS)',
+    language: 'javascript' as const,
+    desc: 'Mfano rahisi wa kutumia JavaScript DOM kurekebisha namba kwa kubonyeza vitufe.',
+    html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+    }
+    .card {
+      background: #1e293b;
+      padding: 2.5rem;
+      border-radius: 1.5rem;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      border: 1px solid #334155;
+      width: 280px;
+    }
+    .count {
+      font-size: 4rem;
+      font-weight: 900;
+      color: #38bdf8;
+      margin: 1rem 0;
+      transition: transform 0.15s ease;
+    }
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    button {
+      padding: 0.75rem 1.25rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      background: #3b82f6;
+      color: white;
+      transition: all 0.1s;
+    }
+    button:active {
+      transform: scale(0.92);
+    }
+    .btn-reset {
+      background: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin:0; font-size:1.1rem; color:#94a3b8;">CodZnz Counter</h2>
+    <div id="display" class="count">0</div>
+    <div class="btn-group">
+      <button onclick="changeCount(-1)">-</button>
+      <button class="btn-reset" onclick="resetCount()">0</button>
+      <button onclick="changeCount(1)">+</button>
+    </div>
+  </div>
+
+  <script>
+    let count = 0;
+    const display = document.getElementById('display');
+
+    function changeCount(amount) {
+      count += amount;
+      display.innerText = count;
+      display.style.transform = 'scale(1.2)';
+      setTimeout(() => display.style.transform = 'scale(1)', 150);
+    }
+
+    function resetCount() {
+      count = 0;
+      display.innerText = 0;
+    }
+  </script>
+</body>
+</html>`,
+    css: '',
+    javascript: '',
+    python: `# Python Program ya Kuhesabu
+def hesabu_jumla(a, b):
+    return a + b
+
+namba1 = 25
+namba2 = 15
+matokeo = hesabu_jumla(namba1, namba2)
+
+print(f"Habari kutoka CodZnz Pro Python!")
+print(f"Jumla ya {namba1} + {namba2} ni: {matokeo}")
+
+# Mzunguko wa for
+print("\\nOrodha ya namba 1 hadi 5:")
+for i in range(1, 6):
+    print(f"Mzunguko {i}: mraba ni {i**2}")`
+  },
+  {
+    id: 'tmpl-card',
+    title: 'Kadi ya Mtumiaji (Tailwind / CSS Glass)',
+    language: 'html' as const,
+    desc: 'Ubunifu wa kadi ya mwanafunzi yenye glassmorphism na gradient.',
+    html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background: radial-gradient(circle at top right, #312e81, #090d16);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: sans-serif;
+      margin: 0;
+    }
+    .profile-card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 24px;
+      border-radius: 20px;
+      width: 300px;
+      text-align: center;
+      color: #fff;
+    }
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid #6366f1;
+      margin: 0 auto 12px;
+      background: #4338ca;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    .name { font-size: 1.25rem; font-weight: 800; margin: 0; }
+    .badge {
+      display: inline-block;
+      background: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .bio { font-size: 12px; color: #cbd5e1; margin: 16px 0; line-height: 1.5; }
+    .btn {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-weight: bold;
+      width: 100%;
+      cursor: pointer;
+    }
+    .btn:hover { background: #4338ca; }
+  </style>
+</head>
+<body>
+  <div class="profile-card">
+    <div class="avatar">👨‍💻</div>
+    <h3 class="name">Juma Ali</h3>
+    <span class="badge">Fullstack Coder (Zanzibar)</span>
+    <p class="bio">Najifunza JavaScript na Python kwenye CodZnz Pro. Lengo langu ni kuunda mifumo ya kisasa ya Mtandaoni.</p>
+    <button class="btn" onclick="alert('Ujumbe umetumwa!')">Tuma Ujumbe</button>
+  </div>
+</body>
+</html>`
+  },
+  {
+    id: 'tmpl-python-calc',
+    title: 'Python Script: Kikokotoo na Orodha',
+    language: 'python' as const,
+    desc: 'Mfano wa Python wenye functions, loops na dictionaries kwa Kiswahili.',
+    python: `# Kikokotoo cha Ushuru na Punguzo la CodZnz
+def kodi_ya_mauzo(bei, kiwango_kodi=0.18):
+    kodi = bei * kiwango_kodi
+    jumla = bei + kodi
+    return kodi, jumla
+
+wanafunzi = [
+    {"jina": "Fatma", "alama": 92, "lugha": "JavaScript"},
+    {"jina": "Bakari", "alama": 85, "lugha": "Python"},
+    {"jina": "Said", "alama": 78, "lugha": "HTML & CSS"}
+]
+
+print("=== MATOKEO YA WANAFUNZI ===")
+for s in wanafunzi:
+    hali = "AMEFAULU VIZURI 🌟" if s["alama"] >= 80 else "AMEFAULU ✅"
+    print(f"Mwanafunzi: {s['jina']} | Somo: {s['lugha']} | Alama: {s['alama']}% -> {hali}")
+
+bei_kozi = 25000
+kodi, jumla_kuu = kodi_ya_mauzo(bei_kozi)
+print(f"\\nBei ya Kozi: TZS {bei_kozi:,}")
+print(f"VAT (18%): TZS {kodi:,.0f}")
+print(f"Jumla Kuu: TZS {jumla_kuu:,.0f}")`
+  }
+];
+
+// --- SEED CHEATSHEETS ---
+export const SEED_CHEATSHEETS = [
+  {
+    id: 'cs-html5',
+    title: 'HTML5 Semantic & Form Elements',
+    category: 'HTML5' as const,
+    icon: '🌐',
+    description: 'Muhtasari wa tags zote kuu za HTML5, miundo ya ukurasa na sifa za fomu.',
+    markdownContent: `### Tags Kuu za Muundo (Semantic HTML)
+* \`<header>\` - Sehemu ya juu ya ukurasa au makala (Logo na Menyu).
+* \`<nav>\` - Sehemu ya viungo vya kuongoza mtumiaji (Navigation links).
+* \`<main>\` - Maudhui makuu ya ukurasa (Main content).
+* \`<section>\` - Kugawa sehemu yenye mada moja maalum.
+* \`<article>\` - Chapisho linalojitegemea (Blog post, habari).
+* \`<aside>\` - Maudhui ya pembeni (Sidebar).
+* \`<footer>\` - Sehemu ya chini kabisa (Hakimiliki, viungo vya ziada).
+
+### Tags za Fomu (Form Inputs)
+\`\`\`html
+<form action="/api/submit" method="POST">
+  <label for="email">Barua Pepe:</label>
+  <input type="email" id="email" required placeholder="mwanafunzi@example.com" />
+  
+  <label for="pass">Nenosiri:</label>
+  <input type="password" id="pass" minlength="6" />
+  
+  <button type="submit">Jisajili</button>
+</form>
+\`\`\``
+  },
+  {
+    id: 'cs-css-tailwind',
+    title: 'Tailwind CSS & Modern Styling',
+    category: 'CSS & Tailwind' as const,
+    icon: '🎨',
+    description: 'Madarasa muhimu ya Flexbox, Grid, Rangi, Nafasi na Responsive Design.',
+    markdownContent: `### Flexbox & Layout
+* \`flex items-center justify-between\` - Panga vipengele katikati na tengeneza nafasi sawa.
+* \`flex flex-col gap-4\` - Panga vipengele wima vyenye nafasi ya 16px.
+* \`grid grid-cols-1 md:grid-cols-3 gap-6\` - Safu 1 kwenye simu, safu 3 kwenye kompyuta.
+
+### Rangi & Typography
+* \`text-xs\`, \`text-sm\`, \`text-base\`, \`text-xl\`, \`text-2xl\` - Ukubwa wa maandishi.
+* \`font-bold\`, \`font-black\`, \`tracking-tight\` - Uzito na muonekano wa herufi.
+* \`bg-primary text-white hover:bg-primary/90\` - Rangi ya msingi na mabadiliko ya hover.`
+  },
+  {
+    id: 'cs-js-es6',
+    title: 'JavaScript ES6+ & Async/Await',
+    category: 'JavaScript' as const,
+    icon: '📜',
+    description: 'Arrow functions, Destructuring, Promises, Map, Filter, na Fetch API.',
+    markdownContent: `### Arrays & Array Methods
+\`\`\`javascript
+const namba = [10, 20, 30, 40];
+
+// Map - badilisha kila namba
+const maradi = namba.map(n => n * 2); // [20, 40, 60, 80]
+
+// Filter - chagua zilizokidhi kigezo
+const kubwa = namba.filter(n => n > 25); // [30, 40]
+
+// Reduce - hesabu jumla
+const jumla = namba.reduce((acc, curr) => acc + curr, 0); // 100
+\`\`\`
+
+### Async / Await na Fetch API
+\`\`\`javascript
+async function pakuaData(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Hitilafu ya seva");
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Kosa:", error.message);
+  }
+}
+\`\`\``
+  },
+  {
+    id: 'cs-python',
+    title: 'Python 3 Misingi na Data Structures',
+    category: 'Python' as const,
+    icon: '🐍',
+    description: 'Lists, Dictionaries, Functions, Loops, na Utunzaji wa Makosa (Exceptions).',
+    markdownContent: `### Dictionaries & Lists
+\`\`\`python
+mwanafunzi = {
+    "jina": "Amina",
+    "umri": 21,
+    "kozi": ["Python", "React"],
+    "ada_imelipwa": True
+}
+
+# Kuongeza kozi mpya
+mwanafunzi["kozi"].append("Machine Learning")
+
+# Kupitia orodha
+for k in mwanafunzi["kozi"]:
+    print(f"Somo: {k}")
+\`\`\`
+
+### Functions & Error Handling
+\`\`\`python
+def gawanya(a, b):
+    try:
+        return a / b
+    except ZeroDivisionError:
+        return "Huwezi kugawanya kwa sifuri (0)!"
+
+print(gawanya(100, 5)) # 20.0
+print(gawanya(50, 0))  # Huwezi kugawanya kwa sifuri!
+\`\`\``
+  },
+  {
+    id: 'cs-git',
+    title: 'Git Commands & GitHub Workflow',
+    category: 'Git' as const,
+    icon: '🚀',
+    description: 'Amri zote muhimu za Git kwa ajili ya kutunza na kurusha kodi mtandaoni.',
+    markdownContent: `### Amri za Kuanzia
+* \`git init\` - Anzisha git repository mpya kwenye folda lako.
+* \`git clone <url>\` - Pakua mradi kutoka GitHub kwenda kwenye kompyuta yako.
+* \`git status\` - Angalia mafaili yaliyobadilika.
+* \`git add .\` - Weka mafaili yote tayari kwa ku-commit.
+* \`git commit -m "Ujumbe wa mabadiliko"\` - Hifadhi mabadiliko rasmi.
+* \`git push origin main\` - Tuma kodi mtandaoni GitHub.`
+  }
+];
+
+// --- SEED Q&A FORUM QUESTIONS ---
+export const SEED_QNA_QUESTIONS = [
+  {
+    id: 'qna-1',
+    itemId: 'c1',
+    itemTitle: 'JavaScript Fundamentals',
+    userId: 'u-user-1',
+    userName: 'Kassim Omary',
+    title: 'Tofauti kati ya "==" na "===" kwenye JavaScript ni ipi?',
+    details: 'Habari walimu, ninaomba kueleweshwa lini ninatakiwa kutumia alama mbili za sawa (==) na lini ninatakiwa kutumia alama tatu (===) ninapolinganisha variables.',
+    codeSnippet: `console.log(5 == "5");  // Inatoa true
+console.log(5 === "5"); // Inatoa false`,
+    createdAt: Date.now() - 3600000 * 5,
+    upvotes: 4,
+    isResolved: true,
+    replies: [
+      {
+        id: 'rep-1',
+        authorId: 'u-admin-1',
+        authorName: 'Mwalimu CodZnz Pro',
+        authorRole: 'instructor' as const,
+        content: 'Habari Kassim! "==" (Loose equality) inalinganisha thamani pekee baada ya kubadili aina (type coercion), ndio maana 5 namba na "5" string zinakuwa sawa. Lakini "===" (Strict equality) inalinganisha thamani PAMOJA na data type. Inashauriwa kutumia "===" kila wakati ili kuepuka bugs.',
+        createdAt: Date.now() - 3600000 * 3,
+        upvotes: 6,
+        isAccepted: true
+      }
+    ]
+  },
+  {
+    id: 'qna-2',
+    itemId: 'c2',
+    itemTitle: 'Python for Data Science',
+    userId: 'u-user-2',
+    userName: 'Zuhura Bakari',
+    title: 'TypeError: can only concatenate str (not "int") to str in Python',
+    details: 'Ninapojaribu kuunganisha jina na namba ya umri ninapata error hii kwenye terminal. Naomba msaada wa kurekebisha.',
+    codeSnippet: `jina = "Fatma"
+umri = 22
+print("Mwanafunzi: " + jina + " Umri: " + umri)`,
+    createdAt: Date.now() - 3600000 * 12,
+    upvotes: 2,
+    isResolved: true,
+    replies: [
+      {
+        id: 'rep-2',
+        authorId: 'u-ai-tutor',
+        authorName: 'AI Coding Tutor',
+        authorRole: 'ai_tutor' as const,
+        content: 'Tatizo hili linatokea kwa sababu Python hairuhusu kuunganisha maandishi (str) na namba (int) moja kwa moja kwa alama ya "+".\\n\\nIli kurekebisha, tumia f-string kama hivi:\\n\`print(f"Mwanafunzi: {jina} Umri: {umri}")\` au badili kuwa string: \`str(umri)\`.',
+        codeSnippet: `print(f"Mwanafunzi: {jina} Umri: {umri}")`,
+        createdAt: Date.now() - 3600000 * 10,
+        upvotes: 5,
+        isAccepted: true
+      }
+    ]
+  }
+];
+
+// --- SEED DEVELOPER PAYOUT REQUESTS ---
+export const SEED_PAYOUT_REQUESTS = [
+  {
+    id: 'pay-req-1',
+    developerId: 'u-demo-1',
+    developerName: 'Rashid Ali',
+    developerEmail: 'rashid@example.com',
+    amount: 120000,
+    provider: 'M-Pesa' as const,
+    accountName: 'Rashid Mussa Ali',
+    phoneNumber: '0754123456',
+    notes: 'Malipo ya mauzo ya App ya Python Studio ya mwezi huu.',
+    status: 'paid' as const,
+    createdAt: Date.now() - 86400000 * 3,
+    processedAt: Date.now() - 86400000 * 1,
+    transactionRef: 'MPESA-TX-8849102',
+    adminNote: 'Imelipwa kikamilifu kupitia Vodacom M-Pesa B2C.'
+  },
+  {
+    id: 'pay-req-2',
+    developerId: 'u-demo-2',
+    developerName: 'Amina Salum',
+    developerEmail: 'amina@example.com',
+    amount: 75000,
+    provider: 'Tigo Pesa' as const,
+    accountName: 'Amina Salum',
+    phoneNumber: '0714987654',
+    notes: 'Kutoa mapato ya kozi ya HTML & CSS.',
+    status: 'pending' as const,
+    createdAt: Date.now() - 3600000 * 4
+  }
+];
+
+// --- SEED STUDY NOTES ---
+export const SEED_STUDY_NOTES = [
+  {
+    id: 'note-1',
+    userId: 'guest',
+    courseId: 'c1',
+    courseTitle: 'JavaScript Fundamentals',
+    title: 'Vidokezo vya Mwanzo: Variables & Functions',
+    content: '- `let` inaruhusu kubadili thamani ya variable.\n- `const` haibadiliki.\n- Tumia arrow functions `() => {}` kwa usafi wa kodi.\n- Kila mara kagua Console kwenye browser (F12) kuona makosa.',
+    tags: ['JavaScript', 'Misingi'],
+    createdAt: Date.now() - 86400000 * 2,
+    updatedAt: Date.now() - 86400000 * 1
+  }
+];
+

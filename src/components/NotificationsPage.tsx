@@ -36,8 +36,19 @@ export const NotificationsPage: React.FC<{
     markAllNotificationsRead, 
     deleteNotification, 
     deleteAllNotifications,
+    siteSettings,
     lang 
   } = useApp();
+
+  const formatNotificationText = (text?: string) => {
+    if (!text) return '';
+    const currentName = siteSettings?.siteName || 'Amourcodes';
+    return text
+      .replace(/CodZnz Studio/gi, `${currentName} Studio`)
+      .replace(/CodZnz Store/gi, `${currentName} Store`)
+      .replace(/CodZnz Pro/gi, currentName)
+      .replace(/CodZnz/gi, currentName);
+  };
 
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -263,7 +274,7 @@ export const NotificationsPage: React.FC<{
                     "font-bold text-sm text-text1 leading-snug mb-1.5",
                     !notif.read && "font-black"
                   )}>
-                    {notif.title}
+                    {formatNotificationText(notif.title)}
                   </h3>
                 )}
 
@@ -295,7 +306,7 @@ export const NotificationsPage: React.FC<{
                 {/* Message Body */}
                 {notif.message && (
                   <p className="text-xs text-text2 leading-relaxed whitespace-pre-line mb-3">
-                    {notif.message}
+                    {formatNotificationText(notif.message)}
                   </p>
                 )}
 

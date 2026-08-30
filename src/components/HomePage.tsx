@@ -9,8 +9,12 @@ import { SearchBar } from './SearchBar';
 import { BundlesSection } from './BundlesSection';
 import { ReferralModal } from './ReferralModal';
 import { BadgesModal } from './BadgesModal';
+import { CodePlayground } from './CodePlayground';
+import { QnAForumModal } from './QnAForumModal';
+import { StudyNotesCheatsheetModal } from './StudyNotesCheatsheetModal';
+import { AIAssistantModal } from './AIAssistantModal';
 import { Category, LearningBundle } from '../types';
-import { ChevronLeft, Sparkles, Smartphone, Gift, Award } from 'lucide-react';
+import { ChevronLeft, Sparkles, Smartphone, Gift, Award, Code2, MessageSquare, BookOpen, Bot } from 'lucide-react';
 
 export const HomePage: React.FC<{ 
   onOpenApp: (id: string) => void; 
@@ -22,6 +26,10 @@ export const HomePage: React.FC<{
   const [subView, setSubView] = useState<Category | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showBadgesModal, setShowBadgesModal] = useState(false);
+  const [showPlayground, setShowPlayground] = useState(false);
+  const [showQnA, setShowQnA] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const getSubContent = () => {
     switch (subView) {
@@ -56,6 +64,61 @@ export const HomePage: React.FC<{
         <>
           {/* Top Banner Carousel */}
           <BannerSlider banners={banners} />
+
+          {/* Quick Access Action Grid (Playground / Q&A / AI Tutor / Notes) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              onClick={() => setShowPlayground(true)}
+              className="h-11 px-3 bg-gradient-to-r from-indigo-950/40 via-card to-card border border-indigo-500/30 hover:border-indigo-500/60 rounded-2xl flex items-center gap-2 text-xs font-bold text-text1 transition-all active:scale-95 shadow-xs"
+            >
+              <div className="w-7 h-7 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                <Code2 size={15} />
+              </div>
+              <div className="text-left truncate">
+                <div className="leading-tight truncate">{lang === 'en' ? 'Playground' : 'Sandbox'}</div>
+                <div className="text-[9px] text-text3 font-normal truncate">HTML/JS/Py</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="h-11 px-3 bg-gradient-to-r from-purple-950/40 via-card to-card border border-purple-500/30 hover:border-purple-500/60 rounded-2xl flex items-center gap-2 text-xs font-bold text-text1 transition-all active:scale-95 shadow-xs"
+            >
+              <div className="w-7 h-7 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                <Bot size={15} />
+              </div>
+              <div className="text-left truncate">
+                <div className="leading-tight truncate">AI Tutor</div>
+                <div className="text-[9px] text-text3 font-normal truncate">{lang === 'en' ? 'Smart Bot' : 'Mwalimu AI'}</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setShowQnA(true)}
+              className="h-11 px-3 bg-gradient-to-r from-emerald-950/40 via-card to-card border border-emerald-500/30 hover:border-emerald-500/60 rounded-2xl flex items-center gap-2 text-xs font-bold text-text1 transition-all active:scale-95 shadow-xs"
+            >
+              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <MessageSquare size={15} />
+              </div>
+              <div className="text-left truncate">
+                <div className="leading-tight truncate">Q&A Forum</div>
+                <div className="text-[9px] text-text3 font-normal truncate">{lang === 'en' ? 'Ask Community' : 'Maswali'}</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setShowNotes(true)}
+              className="h-11 px-3 bg-gradient-to-r from-amber-950/40 via-card to-card border border-amber-500/30 hover:border-amber-500/60 rounded-2xl flex items-center gap-2 text-xs font-bold text-text1 transition-all active:scale-95 shadow-xs"
+            >
+              <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <BookOpen size={15} />
+              </div>
+              <div className="text-left truncate">
+                <div className="leading-tight truncate">Cheatsheets</div>
+                <div className="text-[9px] text-text3 font-normal truncate">{lang === 'en' ? 'Study Notes' : 'Daftari'}</div>
+              </div>
+            </button>
+          </div>
 
           {/* Quick Access Action Pills (Refer & Earn / Badges) */}
           <div className="grid grid-cols-2 gap-2">
@@ -134,6 +197,31 @@ export const HomePage: React.FC<{
         </div>
       )}
 
+      {/* Code Playground Modal */}
+      {showPlayground && (
+        <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto page-anim">
+          <div className="absolute inset-0" onClick={() => setShowPlayground(false)} />
+          <div className="relative w-full max-w-5xl bg-card border border-theme rounded-3xl p-5 sm:p-6 shadow-2xl my-auto z-10 max-h-[92vh] overflow-y-auto">
+            <CodePlayground onClose={() => setShowPlayground(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Q&A Forum Modal */}
+      {showQnA && (
+        <QnAForumModal onClose={() => setShowQnA(false)} />
+      )}
+
+      {/* Study Notes & Cheatsheets Modal */}
+      {showNotes && (
+        <StudyNotesCheatsheetModal onClose={() => setShowNotes(false)} />
+      )}
+
+      {/* AI Assistant Modal */}
+      {showAIModal && (
+        <AIAssistantModal onClose={() => setShowAIModal(false)} />
+      )}
+
       {/* Referral Program Modal */}
       {showReferralModal && (
         <ReferralModal onClose={() => setShowReferralModal(false)} />
@@ -146,5 +234,6 @@ export const HomePage: React.FC<{
     </div>
   );
 };
+
 
 

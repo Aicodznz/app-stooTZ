@@ -10,6 +10,10 @@ export function formatPrice(price: number): string {
   return `TZS ${price.toLocaleString()}`;
 }
 
+export function formatTZS(amount: number): string {
+  return `TZS ${amount.toLocaleString()}`;
+}
+
 export function getInitials(name: string): string {
   return name
     .split(' ')

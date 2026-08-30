@@ -6,9 +6,19 @@ import { cn } from '../lib/utils';
 export const NotificationSlideToast: React.FC<{
   onOpenNotifications: () => void;
 }> = ({ onOpenNotifications }) => {
-  const { notifications, markNotificationRead } = useApp();
+  const { notifications, markNotificationRead, siteSettings } = useApp();
   const [activeToast, setActiveToast] = useState<any | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Record<string, boolean>>({});
+
+  const formatNotificationText = (text?: string) => {
+    if (!text) return '';
+    const currentName = siteSettings?.siteName || 'Amourcodes';
+    return text
+      .replace(/CodZnz Studio/gi, `${currentName} Studio`)
+      .replace(/CodZnz Store/gi, `${currentName} Store`)
+      .replace(/CodZnz Pro/gi, currentName)
+      .replace(/CodZnz/gi, currentName);
+  };
 
   useEffect(() => {
     // Look for the latest unread notification that hasn't been dismissed in this session
@@ -89,12 +99,12 @@ export const NotificationSlideToast: React.FC<{
           </div>
 
           <h4 className="font-bold text-xs text-text1 truncate">
-            {activeToast.title || 'Tangazo Jipya'}
+            {formatNotificationText(activeToast.title) || 'Tangazo Jipya'}
           </h4>
 
           {activeToast.message && (
             <p className="text-[11px] text-text3 line-clamp-1 mt-0.5">
-              {activeToast.message}
+              {formatNotificationText(activeToast.message)}
             </p>
           )}
 

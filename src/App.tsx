@@ -141,8 +141,7 @@ function AppContent() {
             )}
             <div className="flex flex-col min-w-0">
               <h1 className="text-base font-black font-heading leading-tight tracking-tight text-text1 truncate flex items-center">
-                <span className="truncate">{siteSettings?.siteName || 'CodZnz Pro'}</span>
-                <span className="text-primary font-bold text-[10px] bg-primary/10 px-1.5 py-0.5 rounded-md ml-1 shrink-0">PRO</span>
+                <span className="truncate">{siteSettings?.siteName || 'Amourcodes'}</span>
               </h1>
             </div>
           </div>

@@ -298,7 +298,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
           <Code2 size={28} />
         </div>
         <h2 className="text-2xl font-black font-heading tracking-tight text-text1">
-          CodZnz <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">PRO</span>
+          {siteSettings?.siteName || 'Amourcodes'}
         </h2>
         <p className="text-xs text-text3 font-medium px-4">
           {currentMode === 'login' 
@@ -550,7 +550,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch,
                 className="mt-0.5 rounded border-theme text-primary focus:ring-primary"
               />
               <span className="text-[11px] text-text3 leading-tight">
-                {lang === 'en' ? 'I agree to the CodZnz terms, community guidelines & privacy policy.' : 'Ninakubali vigezo, miongozo na sera za faragha za CodZnz.'}
+                {lang === 'en' ? `I agree to the ${siteSettings?.siteName || 'Amourcodes'} terms, community guidelines & privacy policy.` : `Ninakubali vigezo, miongozo na sera za faragha za ${siteSettings?.siteName || 'Amourcodes'}.`}
               </span>
             </label>
           )}

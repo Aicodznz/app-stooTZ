@@ -265,3 +265,144 @@ export interface AppNotification {
   createdAt: number;
   read?: boolean;
 }
+
+// 1. Live Code Playground / Sandbox
+export interface PlaygroundSnippet {
+  id: string;
+  userId?: string;
+  title: string;
+  language: 'html' | 'javascript' | 'python' | 'css';
+  html?: string;
+  css?: string;
+  javascript?: string;
+  python?: string;
+  desc?: string;
+  isTemplate?: boolean;
+  isPublic?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+// 2. Verified Certificate
+export interface CertificateRecord {
+  id: string;
+  certNumber: string;
+  userId: string;
+  userName: string;
+  courseId: string;
+  courseTitle: string;
+  score: number;
+  totalQuestions: number;
+  issueDate: string;
+  issuedTimestamp: number;
+  instructor: string;
+  verificationUrl: string;
+}
+
+// 3. Student Q&A Forum
+export interface QnAReply {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole?: 'student' | 'instructor' | 'admin' | 'ai_tutor';
+  avatarUrl?: string;
+  content: string;
+  codeSnippet?: string;
+  createdAt: number;
+  upvotes?: number;
+  isAccepted?: boolean;
+}
+
+export interface QnAQuestion {
+  id: string;
+  itemId?: string; // Course or Lecture ID
+  itemTitle?: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  title: string;
+  details: string;
+  codeSnippet?: string;
+  errorSnippet?: string;
+  language?: string;
+  createdAt: number;
+  replies: QnAReply[];
+  upvotes: number;
+  isResolved: boolean;
+  tags?: string[];
+}
+
+// 4. Developer Earnings & Payouts
+export interface PayoutRequest {
+  id: string;
+  developerId: string;
+  developerName: string;
+  developerEmail: string;
+  amount: number;
+  provider: 'M-Pesa' | 'Tigo Pesa' | 'Airtel Money' | 'Halopesa' | 'Bank';
+  accountName: string;
+  phoneNumber: string;
+  notes?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
+  createdAt: number;
+  processedAt?: number;
+  transactionRef?: string;
+  adminNote?: string;
+}
+
+// 5. Personal Study Notes & Cheatsheets
+export interface StudyNote {
+  id: string;
+  userId: string;
+  courseId?: string;
+  courseTitle?: string;
+  title: string;
+  content: string;
+  tags?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CheatsheetSection {
+  title: string;
+  code: string;
+  desc?: string;
+  description?: string;
+}
+
+export interface CheatsheetItem {
+  id: string;
+  title: string;
+  category: string;
+  icon: string;
+  description: string;
+  markdownContent?: string;
+  sections?: CheatsheetSection[];
+}
+
+// 6. AI Features
+export interface AIErrExplanation {
+  summary: string;
+  errorLine?: string;
+  cause?: string;
+  rootCause?: string;
+  fixedCode?: string;
+  explanation?: string;
+  keyTakeaway?: string;
+  tips?: string[];
+}
+
+export interface AILessonSummary {
+  title?: string;
+  summary?: string;
+  quickSummary?: string;
+  keyPoints?: string[];
+  quickTakeaways?: string[];
+  keyTakeaway?: string;
+  syntaxCheatSheet?: string;
+  flashcards?: {
+    front: string;
+    back: string;
+  }[];
+}
+

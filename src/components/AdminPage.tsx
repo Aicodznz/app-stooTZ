@@ -1363,8 +1363,7 @@ export const BrandingTab: React.FC = () => {
             <div>
               <div className="text-[10px] text-text3 font-bold uppercase tracking-wider">Muonekano wa Juu (Header Preview):</div>
               <div className="font-black text-base text-text1 flex items-center gap-1.5 mt-0.5">
-                <span>{formData.siteName || 'CodZnz Pro'}</span>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">PRO</span>
+                <span>{formData.siteName || siteSettings?.siteName || 'Amourcodes'}</span>
               </div>
               <div className="text-xs text-text3">{formData.siteTagline || 'Tanzania #1 Coding Education Platform'}</div>
             </div>
@@ -1391,7 +1390,7 @@ export const BrandingTab: React.FC = () => {
             type="text" 
             value={formData.siteName || ''} 
             onChange={e => setFormData({ ...formData, siteName: e.target.value })}
-            placeholder="e.g. CodZnz Pro, Zanzibar Code Academy, Swahili Dev Hub"
+            placeholder="e.g. Amourcodes, Zanzibar Code Academy, Swahili Dev Hub"
             required
             className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary font-bold"
           />

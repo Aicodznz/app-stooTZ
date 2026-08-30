@@ -38,10 +38,14 @@ import {
   Zap,
   ArrowRight,
   UserCheck,
-  Send
+  Send,
+  Wallet,
+  Wand2
 } from 'lucide-react';
 import { cn, formatPrice } from '../lib/utils';
 import { ContentItem, CodApp, Episode, Question, AppScreenshot, DeveloperPackage } from '../types';
+import { DeveloperPayoutModal } from './DeveloperPayoutModal';
+import { AIAssistantModal } from './AIAssistantModal';
 import { 
   SEED_COURSES, 
   SEED_TESTS, 
@@ -74,11 +78,14 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
     developerPackages,
     developerApplications,
     applyForDeveloper,
-    triggerDirectUssdPush
+    triggerDirectUssdPush,
+    siteSettings
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<CreatorTab>('app');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [showAICourseModal, setShowAICourseModal] = useState(false);
 
   // Application / Subscription Form State
   const [selectedPkg, setSelectedPkg] = useState<DeveloperPackage | null>(
@@ -370,7 +377,7 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
   const [appDesc, setAppDesc] = useState('');
   const [appFullDesc, setAppFullDesc] = useState('');
   const [appCategory, setAppCategory] = useState('Coding & Developer Tools');
-  const [appDeveloper, setAppDeveloper] = useState(profile?.name || user?.displayName || 'CodZnz Studio');
+  const [appDeveloper, setAppDeveloper] = useState(profile?.name || user?.displayName || `${siteSettings?.siteName || 'Amourcodes'} Studio`);
   const [appPriceType, setAppPriceType] = useState<'free' | 'paid'>('free');
   const [appPrice, setAppPrice] = useState('5000');
   const [appSize, setAppSize] = useState('32MB');
@@ -393,7 +400,7 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
       desc: appDesc || 'Programu maalum ya kusaidia uandishi wa kodi na mafunzo.',
       fullDesc: appFullDesc || appDesc || 'Maelezo kamili ya programu hii.',
       changelog: appChangelog,
-      developer: appDeveloper || 'CodZnz Creator',
+      developer: appDeveloper || `${siteSettings?.siteName || 'Amourcodes'} Creator`,
       size: appSize || '25MB',
       rating: '5.0',
       videoUrl: appVideoUrl.trim() || undefined,
@@ -702,8 +709,8 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
             </h2>
             <p className="text-xs sm:text-sm text-indigo-200/90 max-w-xl">
               {lang === 'en'
-                ? 'Upload software tools, code editors, online bootcamps, and quiz certifications directly to the CodZnz marketplace.'
-                : 'Pakia programu zako za koding, mifumo, kozi za video, na mitihani ya vyeti moja kwa moja kwenye soko la CodZnz.'}
+                ? `Upload software tools, code editors, online bootcamps, and quiz certifications directly to the ${siteSettings?.siteName || 'Amourcodes'} marketplace.`
+                : `Pakia programu zako za koding, mifumo, kozi za video, na mitihani ya vyeti moja kwa moja kwenye soko la ${siteSettings?.siteName || 'Amourcodes'}.`}
             </p>
           </div>
 
@@ -735,6 +742,22 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          onClick={() => setShowPayoutModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border-emerald-500/40 shadow-sm"
+        >
+          <Wallet size={15} />
+          <span>{lang === 'en' ? '💰 Wallet & Payouts' : '💰 Toa Pesa (Payouts)'}</span>
+        </button>
+
+        <button
+          onClick={() => setShowAICourseModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border-purple-500/40 shadow-sm"
+        >
+          <Wand2 size={15} className="text-amber-300" />
+          <span>{lang === 'en' ? '✨ AI Course Builder' : '✨ Unda Kozi na AI'}</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('app')}
           className={cn(
@@ -842,7 +865,7 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                   <input
                     type="text"
                     required
-                    placeholder={lang === 'en' ? 'e.g. CodZnz Python Studio' : 'Mf. CodZnz Python Studio'}
+                    placeholder={lang === 'en' ? `e.g. ${siteSettings?.siteName || 'Amourcodes'} Python Studio` : `Mf. ${siteSettings?.siteName || 'Amourcodes'} Python Studio`}
                     value={appName}
                     onChange={e => setAppName(e.target.value)}
                     className="w-full h-11 px-3.5 bg-card2 border border-theme rounded-xl text-xs font-bold text-text1 outline-none focus:border-primary transition-all"
@@ -1022,7 +1045,7 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                 className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-black text-xs shadow-lg shadow-primary/25 flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
               >
                 <UploadCloud size={16} />
-                <span>{lang === 'en' ? 'Publish App to CodZnz Store' : 'Chapisha Programu Kwenye CodZnz Store'}</span>
+                <span>{lang === 'en' ? `Publish App to ${siteSettings?.siteName || 'Amourcodes'} Store` : `Chapisha Programu Kwenye ${siteSettings?.siteName || 'Amourcodes'} Store`}</span>
               </button>
             </form>
           </div>
@@ -1665,6 +1688,16 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* Developer Payout Modal */}
+      {showPayoutModal && (
+        <DeveloperPayoutModal onClose={() => setShowPayoutModal(false)} />
+      )}
+
+      {/* AI Assistant & Course Builder Modal */}
+      {showAICourseModal && (
+        <AIAssistantModal onClose={() => setShowAICourseModal(false)} defaultTab="generator" />
       )}
     </div>
   );

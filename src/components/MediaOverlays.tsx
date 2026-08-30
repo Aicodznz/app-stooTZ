@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ContentItem, Episode } from '../types';
+import { ContentItem, Episode, AILessonSummary } from '../types';
 import { 
   X, 
   ChevronLeft, 
@@ -18,19 +18,27 @@ import {
   Maximize2,
   Sparkles,
   UserCheck,
-  Star
+  Star,
+  Code2,
+  Bot
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
+import { CodePlayground } from './CodePlayground';
+import { AIAssistantModal } from './AIAssistantModal';
 
 export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => void }> = ({ item, onClose }) => {
-  const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang, reviews, addReview } = useApp();
+  const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang, reviews, addReview, summarizeLessonWithAI } = useApp();
   const [currIdx, setCurrIdx] = useState(0);
   const [activeTab, setActiveTab] = useState<'playlist' | 'qa' | 'notes' | 'reviews'>('playlist');
   const [newQuestion, setNewQuestion] = useState('');
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [note, setNote] = useState(() => localStorage.getItem(`note_${item.id}_${currIdx}`) || '');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [showPlayground, setShowPlayground] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiSummary, setAiSummary] = useState<AILessonSummary | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
 
   // Review Form State
   const [reviewRating, setReviewRating] = useState(5);
@@ -207,6 +215,71 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
                 )}
               </button>
             </div>
+
+            {/* Quick Interactive Episode Tools (AI Summarizer & Live Code Playground) */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={async () => {
+                  if (aiSummary) {
+                    setAiSummary(null);
+                    return;
+                  }
+                  setSummarizing(true);
+                  const res = await summarizeLessonWithAI(
+                    currEp?.title || item.title,
+                    currEp?.description || item.desc,
+                    item.title
+                  );
+                  setAiSummary(res);
+                  setSummarizing(false);
+                }}
+                disabled={summarizing}
+                className="h-10 px-3 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                <Sparkles size={14} className="text-amber-300" />
+                <span>{summarizing ? 'Inatengeneza...' : aiSummary ? 'Funga Muhtasari' : '✨ Muhtasari wa AI'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowPlayground(true)}
+                className="h-10 px-3 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                <Code2 size={14} />
+                <span>💻 Live Code Sandbox</span>
+              </button>
+            </div>
+
+            {/* AI Summary Card */}
+            {aiSummary && (
+              <div className="p-4 bg-purple-950/30 border border-purple-500/40 rounded-2xl space-y-2.5 text-xs text-purple-100 animate-in fade-in">
+                <div className="flex items-center justify-between text-purple-300 font-black">
+                  <div className="flex items-center gap-1.5">
+                    <Bot size={15} />
+                    <span>Muhtasari wa AI (Key Takeaways)</span>
+                  </div>
+                  <button onClick={() => setAiSummary(null)} className="text-white/60 hover:text-white">
+                    <X size={14} />
+                  </button>
+                </div>
+                {aiSummary.quickSummary && (
+                  <p className="leading-relaxed text-[11px] text-white/90 font-medium">
+                    {aiSummary.quickSummary}
+                  </p>
+                )}
+                {aiSummary.summary && !aiSummary.quickSummary && (
+                  <p className="leading-relaxed text-[11px] text-white/90 font-medium">
+                    {aiSummary.summary}
+                  </p>
+                )}
+                {((aiSummary.keyPoints && aiSummary.keyPoints.length > 0) || (aiSummary.quickTakeaways && aiSummary.quickTakeaways.length > 0)) && (
+                  <ul className="space-y-1 pl-4 list-disc text-[11px] text-purple-200">
+                    {(aiSummary.keyPoints || aiSummary.quickTakeaways || []).map((pt, idx) => (
+                      <li key={idx}>{pt}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2.5 pt-2">
               <h4 className="text-[10px] uppercase font-black text-white/40 tracking-[2px]">
@@ -484,6 +557,21 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
           </div>
         )}
       </div>
+
+      {/* Code Playground Modal */}
+      {showPlayground && (
+        <div className="fixed inset-0 z-[250] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="absolute inset-0" onClick={() => setShowPlayground(false)} />
+          <div className="relative w-full max-w-5xl bg-[#0f172a] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl my-auto z-10 max-h-[92vh] overflow-y-auto">
+            <CodePlayground onClose={() => setShowPlayground(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* AI Assistant Modal */}
+      {showAIModal && (
+        <AIAssistantModal onClose={() => setShowAIModal(false)} />
+      )}
     </div>
   );
 };

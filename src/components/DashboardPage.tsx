@@ -28,10 +28,19 @@ import {
   Upload,
   Save,
   CheckCircle,
-  Settings
+  Settings,
+  MessageSquare,
+  Wallet,
+  Bot,
+  Wand2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { CodePlayground } from './CodePlayground';
+import { QnAForumModal } from './QnAForumModal';
+import { StudyNotesCheatsheetModal } from './StudyNotesCheatsheetModal';
+import { AIAssistantModal } from './AIAssistantModal';
+import { DeveloperPayoutModal } from './DeveloperPayoutModal';
 
 // Preset modern avatar badges
 const PRESET_AVATARS = [
@@ -46,7 +55,7 @@ const PRESET_AVATARS = [
 ];
 
 export const DashboardPage: React.FC<{ onNavigate: (page: any) => void; onOpenContent?: (id: string) => void }> = ({ onNavigate, onOpenContent }) => {
-  const { user, profile, isAdm, lang, pts, strk, courses, tests, lectures, lib, notifications, markNotificationRead, completedEpisodes, updateUserProfile } = useApp();
+  const { user, profile, isAdm, lang, pts, strk, courses, tests, lectures, lib, notifications, markNotificationRead, completedEpisodes, updateUserProfile, siteSettings } = useApp();
   const [copiedRef, setCopiedRef] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -59,6 +68,13 @@ export const DashboardPage: React.FC<{ onNavigate: (page: any) => void; onOpenCo
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // New interactive feature modals
+  const [showPlayground, setShowPlayground] = useState(false);
+  const [showQnA, setShowQnA] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center page-anim">
@@ -66,7 +82,7 @@ export const DashboardPage: React.FC<{ onNavigate: (page: any) => void; onOpenCo
           <BookOpen size={38} />
         </div>
         <h2 className="text-xl font-bold mb-2 font-poppins">
-          {lang === 'en' ? 'Welcome to CodZnz Pro' : 'Karibu CodZnz Pro'}
+          {lang === 'en' ? `Welcome to ${siteSettings?.siteName || 'Amourcodes'}` : `Karibu ${siteSettings?.siteName || 'Amourcodes'}`}
         </h2>
         <p className="text-text3 text-xs sm:text-sm mb-8 max-w-[260px] leading-relaxed">
           {lang === 'en' ? 'Log in to track your learning journey, claim certificates, and earn XP.' : 'Ingia ili ufuatilie masomo yako, upate vyeti, na ujipatie pointi za XP.'}
@@ -325,6 +341,66 @@ export const DashboardPage: React.FC<{ onNavigate: (page: any) => void; onOpenCo
           >
             {copiedRef ? <Check size={12} className="text-ok" /> : <Copy size={12} />}
             <span>{copiedRef ? (lang === 'en' ? 'Copied' : 'Imenakiliwa') : (lang === 'en' ? 'Share' : 'Shiriki')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Modern Coding Tools & AI Hub */}
+      <div className="space-y-2.5">
+        <div className="text-[10px] font-black text-text3 uppercase tracking-widest px-1">
+          {lang === 'en' ? 'Interactive Coding Hub & AI' : 'Zana za Vitendo & Mwalimu wa AI'}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <button
+            onClick={() => setShowPlayground(true)}
+            className="p-3 bg-card border border-theme hover:border-indigo-500/50 rounded-2xl flex flex-col items-start gap-2 text-left transition-all active:scale-95 shadow-xs group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Code2 size={18} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-text1">{lang === 'en' ? 'Code Sandbox' : 'Playground'}</div>
+              <div className="text-[10px] text-text3">HTML / JS / Python</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowAIModal(true)}
+            className="p-3 bg-card border border-theme hover:border-purple-500/50 rounded-2xl flex flex-col items-start gap-2 text-left transition-all active:scale-95 shadow-xs group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Bot size={18} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-text1">AI Swahili Tutor</div>
+              <div className="text-[10px] text-text3">Ask anything & debug</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowQnA(true)}
+            className="p-3 bg-card border border-theme hover:border-emerald-500/50 rounded-2xl flex flex-col items-start gap-2 text-left transition-all active:scale-95 shadow-xs group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <MessageSquare size={18} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-text1">Q&A Forum</div>
+              <div className="text-[10px] text-text3">Maswali ya masomo</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowNotes(true)}
+            className="p-3 bg-card border border-theme hover:border-amber-500/50 rounded-2xl flex flex-col items-start gap-2 text-left transition-all active:scale-95 shadow-xs group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <BookOpen size={18} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-text1">Cheatsheets</div>
+              <div className="text-[10px] text-text3">Notes & Muhtasari</div>
+            </div>
           </button>
         </div>
       </div>
@@ -648,6 +724,36 @@ export const DashboardPage: React.FC<{ onNavigate: (page: any) => void; onOpenCo
           </div>
         )}
       </AnimatePresence>
+
+      {/* Code Playground Modal */}
+      {showPlayground && (
+        <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto page-anim">
+          <div className="absolute inset-0" onClick={() => setShowPlayground(false)} />
+          <div className="relative w-full max-w-5xl bg-card border border-theme rounded-3xl p-5 sm:p-6 shadow-2xl my-auto z-10 max-h-[92vh] overflow-y-auto">
+            <CodePlayground onClose={() => setShowPlayground(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Q&A Forum Modal */}
+      {showQnA && (
+        <QnAForumModal onClose={() => setShowQnA(false)} />
+      )}
+
+      {/* Study Notes & Cheatsheets Modal */}
+      {showNotes && (
+        <StudyNotesCheatsheetModal onClose={() => setShowNotes(false)} />
+      )}
+
+      {/* AI Assistant Modal */}
+      {showAIModal && (
+        <AIAssistantModal onClose={() => setShowAIModal(false)} />
+      )}
+
+      {/* Developer Payout Modal */}
+      {showPayoutModal && (
+        <DeveloperPayoutModal onClose={() => setShowPayoutModal(false)} />
+      )}
     </div>
   );
 };

@@ -17,7 +17,14 @@ import {
   DeveloperApplication,
   LearningBundle,
   Coupon,
-  AchievementBadge
+  AchievementBadge,
+  PlaygroundSnippet,
+  QnAQuestion,
+  PayoutRequest,
+  StudyNote,
+  CheatsheetItem,
+  AIErrExplanation,
+  AILessonSummary
 } from '../types';
 import { 
   SEED_COURSES, 
@@ -33,7 +40,12 @@ import {
   SEED_DEVELOPER_APPLICATIONS,
   SEED_BUNDLES,
   SEED_COUPONS,
-  SEED_ACHIEVEMENT_BADGES
+  SEED_ACHIEVEMENT_BADGES,
+  SEED_PLAYGROUND_TEMPLATES,
+  SEED_CHEATSHEETS,
+  SEED_QNA_QUESTIONS,
+  SEED_PAYOUT_REQUESTS,
+  SEED_STUDY_NOTES
 } from '../constants';
 
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -88,6 +100,11 @@ interface AppState {
   appliedCoupon: Coupon | null;
   badges: AchievementBadge[];
   unlockedBadges: string[];
+  playgroundSnippets: PlaygroundSnippet[];
+  qnaQuestions: QnAQuestion[];
+  payoutRequests: PayoutRequest[];
+  studyNotes: StudyNote[];
+  cheatsheets: CheatsheetItem[];
 }
 
 interface AppContextType extends AppState {
@@ -143,6 +160,25 @@ interface AppContextType extends AppState {
   claimReferral: (code: string) => Promise<{ success: boolean; message: string }>;
   unlockBadge: (badgeId: string) => void;
   triggerDirectUssdPush: (phone: string, amount: number, providerName: string) => Promise<{ success: boolean; ref: string }>;
+  // --- NEW CAPABILITIES ---
+  // 1. Code Playground
+  savePlaygroundSnippet: (snippet: PlaygroundSnippet) => void;
+  deletePlaygroundSnippet: (id: string) => void;
+  // 2. Q&A Community Forum
+  addQnAQuestion: (q: { itemId?: string; itemTitle?: string; title: string; details: string; codeSnippet?: string }) => Promise<boolean>;
+  addQnAReply: (questionId: string, content: string, codeSnippet?: string) => Promise<boolean>;
+  upvoteQnA: (questionId: string) => void;
+  // 3. Developer Payouts
+  requestPayout: (data: { amount: number; provider: 'M-Pesa' | 'Tigo Pesa' | 'Airtel Money' | 'Halopesa'; accountName: string; phoneNumber: string; notes?: string }) => Promise<boolean>;
+  updatePayoutStatus: (id: string, status: 'approved' | 'rejected' | 'paid', adminNote?: string, transactionRef?: string) => Promise<boolean>;
+  // 4. Study Notes & Cheatsheets
+  saveStudyNote: (note: { id?: string; courseId?: string; courseTitle?: string; title: string; content: string; tags?: string[] }) => void;
+  deleteStudyNote: (id: string) => void;
+  // 5. Server-Side AI Helpers
+  explainCodeErrorWithAI: (code: string, errorMessage?: string, language?: string) => Promise<AIErrExplanation>;
+  generateCourseWithAI: (topic: string, level?: string, category?: string) => Promise<any>;
+  summarizeLessonWithAI: (title: string, content: string, level?: string) => Promise<AILessonSummary>;
+  askAITutor: (question: string, lessonContext?: string, studentCode?: string) => Promise<string>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -203,7 +239,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     coupons: JSON.parse(localStorage.getItem('czp_coupons') || 'null') || SEED_COUPONS,
     appliedCoupon: null,
     badges: SEED_ACHIEVEMENT_BADGES,
-    unlockedBadges: JSON.parse(localStorage.getItem('czp_unlocked_badges') || '["bdg-welcome"]')
+    unlockedBadges: JSON.parse(localStorage.getItem('czp_unlocked_badges') || '["bdg-welcome"]'),
+    playgroundSnippets: JSON.parse(localStorage.getItem('czp_snippets') || 'null') || SEED_PLAYGROUND_TEMPLATES,
+    qnaQuestions: JSON.parse(localStorage.getItem('czp_qna') || 'null') || SEED_QNA_QUESTIONS,
+    payoutRequests: JSON.parse(localStorage.getItem('czp_payouts') || 'null') || SEED_PAYOUT_REQUESTS,
+    studyNotes: JSON.parse(localStorage.getItem('czp_notes') || 'null') || SEED_STUDY_NOTES,
+    cheatsheets: SEED_CHEATSHEETS
   });
 
   // Dynamic CSS variables for primary and accent brand colors
@@ -325,6 +366,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('czp_apps', JSON.stringify(state.apps));
     localStorage.setItem('czp_banners', JSON.stringify(state.banners));
   }, [state.courses, state.tests, state.lectures, state.apps, state.banners]);
+
+  useEffect(() => {
+    localStorage.setItem('czp_snippets', JSON.stringify(state.playgroundSnippets));
+  }, [state.playgroundSnippets]);
+
+  useEffect(() => {
+    localStorage.setItem('czp_qna', JSON.stringify(state.qnaQuestions));
+  }, [state.qnaQuestions]);
+
+  useEffect(() => {
+    localStorage.setItem('czp_payouts', JSON.stringify(state.payoutRequests));
+  }, [state.payoutRequests]);
+
+  useEffect(() => {
+    localStorage.setItem('czp_notes', JSON.stringify(state.studyNotes));
+  }, [state.studyNotes]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -1240,6 +1297,286 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // --- 6. CODE PLAYGROUND METHODS ---
+  const savePlaygroundSnippet = (snippet: PlaygroundSnippet) => {
+    setState(prev => {
+      const exists = prev.playgroundSnippets.some(s => s.id === snippet.id);
+      const updated = exists 
+        ? prev.playgroundSnippets.map(s => s.id === snippet.id ? { ...snippet, updatedAt: Date.now() } : s)
+        : [{ ...snippet, createdAt: Date.now(), updatedAt: Date.now() }, ...prev.playgroundSnippets];
+      return { ...prev, playgroundSnippets: updated };
+    });
+  };
+
+  const deletePlaygroundSnippet = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      playgroundSnippets: prev.playgroundSnippets.filter(s => s.id !== id)
+    }));
+  };
+
+  // --- 7. Q&A COMMUNITY FORUM METHODS ---
+  const addQnAQuestion = async (q: { itemId?: string; itemTitle?: string; title: string; details: string; codeSnippet?: string }): Promise<boolean> => {
+    const newQ: QnAQuestion = {
+      id: 'qna-' + Date.now(),
+      itemId: q.itemId,
+      itemTitle: q.itemTitle,
+      userId: state.user?.uid || 'guest',
+      userName: state.profile?.name || state.user?.displayName || 'Mwanafunzi CodZnz',
+      userAvatar: state.profile?.photoURL,
+      title: q.title,
+      details: q.details,
+      codeSnippet: q.codeSnippet,
+      createdAt: Date.now(),
+      upvotes: 0,
+      isResolved: false,
+      replies: []
+    };
+
+    setState(prev => ({
+      ...prev,
+      qnaQuestions: [newQ, ...prev.qnaQuestions]
+    }));
+
+    try {
+      await setDoc(doc(db, 'qna_questions', newQ.id), newQ);
+    } catch (e) {
+      console.log('Firebase QnA offline fallback:', e);
+    }
+    return true;
+  };
+
+  const addQnAReply = async (questionId: string, content: string, codeSnippet?: string): Promise<boolean> => {
+    const isInstructor = state.isAdm || state.profile?.role === 'developer';
+    const newReply = {
+      id: 'rep-' + Date.now(),
+      authorId: state.user?.uid || 'guest',
+      authorName: state.profile?.name || state.user?.displayName || 'CodZnz Member',
+      authorAvatar: state.profile?.photoURL,
+      authorRole: (isInstructor ? 'instructor' : 'student') as 'instructor' | 'student',
+      content,
+      codeSnippet,
+      createdAt: Date.now(),
+      upvotes: 0,
+      isAccepted: false
+    };
+
+    setState(prev => ({
+      ...prev,
+      qnaQuestions: prev.qnaQuestions.map(q => {
+        if (q.id === questionId) {
+          return {
+            ...q,
+            replies: [...q.replies, newReply]
+          };
+        }
+        return q;
+      })
+    }));
+
+    try {
+      const qDoc = doc(db, 'qna_questions', questionId);
+      const targetQ = state.qnaQuestions.find(q => q.id === questionId);
+      if (targetQ) {
+        await setDoc(qDoc, {
+          ...targetQ,
+          replies: [...targetQ.replies, newReply]
+        }, { merge: true });
+      }
+    } catch (e) {
+      console.log('Firebase QnA reply sync fallback:', e);
+    }
+    return true;
+  };
+
+  const upvoteQnA = (questionId: string) => {
+    setState(prev => ({
+      ...prev,
+      qnaQuestions: prev.qnaQuestions.map(q => {
+        if (q.id === questionId) {
+          return { ...q, upvotes: q.upvotes + 1 };
+        }
+        return q;
+      })
+    }));
+  };
+
+  // --- 8. DEVELOPER PAYOUT REQUESTS ---
+  const requestPayout = async (data: { amount: number; provider: 'M-Pesa' | 'Tigo Pesa' | 'Airtel Money' | 'Halopesa'; accountName: string; phoneNumber: string; notes?: string }): Promise<boolean> => {
+    const newReq: PayoutRequest = {
+      id: 'payout-' + Date.now(),
+      developerId: state.user?.uid || 'dev-' + Date.now(),
+      developerName: state.profile?.name || state.user?.displayName || 'Developer',
+      developerEmail: state.profile?.email || state.user?.email || 'dev@example.com',
+      amount: data.amount,
+      provider: data.provider,
+      accountName: data.accountName,
+      phoneNumber: data.phoneNumber,
+      notes: data.notes,
+      status: 'pending',
+      createdAt: Date.now()
+    };
+
+    setState(prev => ({
+      ...prev,
+      payoutRequests: [newReq, ...prev.payoutRequests],
+      notifications: [
+        {
+          id: 'notif-payout-' + Date.now(),
+          title: 'Ombi la Kutoa Pesa Limetumwa! 💰',
+          message: `Ombi lako la kutoa TZS ${data.amount.toLocaleString()} kupitia ${data.provider} limepokelewa na linakaguliwa.`,
+          type: 'info',
+          createdAt: Date.now(),
+          read: false
+        },
+        ...prev.notifications
+      ]
+    }));
+
+    try {
+      await setDoc(doc(db, 'payout_requests', newReq.id), newReq);
+    } catch (e) {
+      console.log('Firebase payout request offline fallback:', e);
+    }
+    return true;
+  };
+
+  const updatePayoutStatus = async (id: string, status: 'approved' | 'rejected' | 'paid', adminNote?: string, transactionRef?: string): Promise<boolean> => {
+    setState(prev => ({
+      ...prev,
+      payoutRequests: prev.payoutRequests.map(p => {
+        if (p.id === id) {
+          return {
+            ...p,
+            status,
+            adminNote: adminNote || p.adminNote,
+            transactionRef: transactionRef || p.transactionRef,
+            processedAt: Date.now()
+          };
+        }
+        return p;
+      })
+    }));
+
+    try {
+      await setDoc(doc(db, 'payout_requests', id), {
+        status,
+        adminNote: adminNote || null,
+        transactionRef: transactionRef || null,
+        processedAt: Date.now()
+      }, { merge: true });
+    } catch (e) {
+      console.log('Firebase payout update offline fallback:', e);
+    }
+    return true;
+  };
+
+  // --- 9. STUDY NOTES METHODS ---
+  const saveStudyNote = (note: { id?: string; courseId?: string; courseTitle?: string; title: string; content: string; tags?: string[] }) => {
+    setState(prev => {
+      const existingIdx = prev.studyNotes.findIndex(n => n.id === note.id);
+      if (existingIdx >= 0) {
+        const updated = [...prev.studyNotes];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          ...note,
+          updatedAt: Date.now()
+        };
+        return { ...prev, studyNotes: updated };
+      } else {
+        const newNote: StudyNote = {
+          id: 'note-' + Date.now(),
+          userId: state.user?.uid || 'guest',
+          courseId: note.courseId,
+          courseTitle: note.courseTitle,
+          title: note.title,
+          content: note.content,
+          tags: note.tags || ['Coding'],
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        return { ...prev, studyNotes: [newNote, ...prev.studyNotes] };
+      }
+    });
+  };
+
+  const deleteStudyNote = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      studyNotes: prev.studyNotes.filter(n => n.id !== id)
+    }));
+  };
+
+  // --- 10. SERVER-SIDE AI INTEGRATIONS ---
+  const explainCodeErrorWithAI = async (code: string, errorMessage?: string, language?: string): Promise<AIErrExplanation> => {
+    try {
+      const res = await fetch('/api/gemini/explain-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, errorMessage, language: language || 'javascript' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI service error');
+      return data;
+    } catch (err: any) {
+      return {
+        summary: 'Hitilafu imetokea wakati wa kuchambua error.',
+        rootCause: err.message || 'Mtandao au seva haipatikani kwa sasa.',
+        fixedCode: code,
+        keyTakeaway: 'Kagua sintaksia ya kodi yako au jaribu tena baada ya muda mfupi.'
+      };
+    }
+  };
+
+  const generateCourseWithAI = async (topic: string, level?: string, category?: string): Promise<any> => {
+    try {
+      const res = await fetch('/api/gemini/generate-course', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, level: level || 'Beginner', category: category || 'courses' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI generation error');
+      return data;
+    } catch (err: any) {
+      throw new Error(err.message || 'Imeshindwa kuunda kozi kupitia AI');
+    }
+  };
+
+  const summarizeLessonWithAI = async (title: string, content: string, level?: string): Promise<AILessonSummary> => {
+    try {
+      const res = await fetch('/api/gemini/summarize-lesson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, level: level || 'All levels' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI summary error');
+      return data;
+    } catch (err: any) {
+      return {
+        title,
+        keyPoints: ['Jifunze misingi ya somo hili kwa makini.', 'Fanya mazoezi kwa vitendo kwenye Code Playground.', 'Uliza maswali kwenye jukwaa la Q&A ukikwama.'],
+        quickSummary: `Muhtasari wa ${title}: Somo hili linaangazia uelewa na mifano halisi ya kuandika mifumo.`
+      };
+    }
+  };
+
+  const askAITutor = async (question: string, lessonContext?: string, studentCode?: string): Promise<string> => {
+    try {
+      const res = await fetch('/api/gemini/tutor-qa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, lessonContext, studentCode })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI Tutor error');
+      return data.answer || 'Samahani, sijapata jibu kwa sasa.';
+    } catch (err: any) {
+      return 'Kuna hitilafu ya mtandao kufikia AI Tutor. Tafadhali jaribu tena baada ya sekunde chache.';
+    }
+  };
+
   return (
     <AppContext.Provider 
       value={{ 
@@ -1294,7 +1631,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearAppliedCoupon,
         claimReferral,
         unlockBadge,
-        triggerDirectUssdPush
+        triggerDirectUssdPush,
+        // --- NEW IMPLEMENTATIONS ---
+        savePlaygroundSnippet,
+        deletePlaygroundSnippet,
+        addQnAQuestion,
+        addQnAReply,
+        upvoteQnA,
+        requestPayout,
+        updatePayoutStatus,
+        saveStudyNote,
+        deleteStudyNote,
+        explainCodeErrorWithAI,
+        generateCourseWithAI,
+        summarizeLessonWithAI,
+        askAITutor
       }}
     >
       {children}
