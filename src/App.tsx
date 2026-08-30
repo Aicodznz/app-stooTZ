@@ -121,19 +121,28 @@ function AppContent() {
       {/* Top Fixed Header */}
       <header className="fixed top-0 left-0 right-0 h-[62px] bg-topbg backdrop-blur-xl border-b border-theme z-50 shadow-xs">
         <div className="w-full max-w-lg mx-auto h-full px-3.5 sm:px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActivePage('home')}>
+          <div className="flex items-center gap-2.5 cursor-pointer max-w-[60%] sm:max-w-[70%]" onClick={() => setActivePage('home')}>
             {siteSettings?.logoUrl ? (
-              <div className="w-8 h-8 rounded-xl overflow-hidden border border-theme shadow-glow-sm bg-card">
-                <img src={siteSettings.logoUrl} alt="Site Logo" className="w-full h-full object-cover" />
+              <div className="w-8 h-8 rounded-xl overflow-hidden border border-theme shadow-glow-sm bg-card shrink-0">
+                <img 
+                  src={siteSettings.logoUrl} 
+                  alt={siteSettings.siteName || "Logo"} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to emoji box if image URL fails
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-glow-sm">
-                <span className="text-white font-black text-sm">{siteSettings?.logoEmoji || 'C'}</span>
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-glow-sm shrink-0">
+                <span className="text-white font-black text-sm">{siteSettings?.logoEmoji || '⚡'}</span>
               </div>
             )}
-            <div className="flex flex-col">
-              <h1 className="text-base font-black font-heading leading-tight tracking-tight text-text1">
-                {siteSettings?.siteName || 'CodZnz Pro'} <span className="text-primary font-bold text-xs bg-primary/10 px-1.5 py-0.5 rounded-md ml-0.5">PRO</span>
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-base font-black font-heading leading-tight tracking-tight text-text1 truncate flex items-center">
+                <span className="truncate">{siteSettings?.siteName || 'CodZnz Pro'}</span>
+                <span className="text-primary font-bold text-[10px] bg-primary/10 px-1.5 py-0.5 rounded-md ml-1 shrink-0">PRO</span>
               </h1>
             </div>
           </div>

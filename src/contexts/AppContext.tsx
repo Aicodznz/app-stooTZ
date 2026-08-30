@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, User, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db, ADMIN_EMAIL } from '../services/firebase';
 import { 
   UserProfile, 
@@ -224,7 +224,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     localStorage.setItem('czp_site_settings', JSON.stringify(state.siteSettings));
+    if (state.siteSettings?.siteName) {
+      document.title = `${state.siteSettings.siteName} | ${state.siteSettings.siteTagline || 'Swahili Coding Education'}`;
+    }
   }, [state.siteSettings]);
+
+  // Realtime Firestore sync for siteSettings & ussdSettings
+  useEffect(() => {
+    let unsubSite = () => {};
+    let unsubUssd = () => {};
+    try {
+      unsubSite = onSnapshot(doc(db, 'settings', 'site'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as Partial<SiteSettings>;
+          setState(prev => {
+            const merged = { ...prev.siteSettings, ...data };
+            localStorage.setItem('czp_site_settings', JSON.stringify(merged));
+            return { ...prev, siteSettings: merged };
+          });
+        }
+      }, (err) => {
+        console.log('Site settings snapshot offline notice:', err);
+      });
+    } catch (e) {
+      console.warn('Site settings listener error:', e);
+    }
+
+    try {
+      unsubUssd = onSnapshot(doc(db, 'settings', 'ussd'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as Partial<UssdSettings>;
+          setState(prev => {
+            const merged = { ...prev.ussdSettings, ...data };
+            localStorage.setItem('czp_ussd_settings', JSON.stringify(merged));
+            return { ...prev, ussdSettings: merged };
+          });
+        }
+      }, (err) => {
+        console.log('USSD settings snapshot offline notice:', err);
+      });
+    } catch (e) {
+      console.warn('USSD settings listener error:', e);
+    }
+
+    return () => {
+      unsubSite();
+      unsubUssd();
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('czp_ussd_settings', JSON.stringify(state.ussdSettings));

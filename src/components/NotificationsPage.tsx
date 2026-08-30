@@ -39,7 +39,7 @@ export const NotificationsPage: React.FC<{
     lang 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'offers' | 'updates' | 'images'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -53,9 +53,6 @@ export const NotificationsPage: React.FC<{
 
   const filteredNotifications = notifications.filter(n => {
     if (activeTab === 'unread') return !n.read;
-    if (activeTab === 'offers') return n.type === 'offer' || n.offerCode || n.offerDiscount;
-    if (activeTab === 'updates') return n.type === 'update' || n.type === 'info' || n.type === 'success';
-    if (activeTab === 'images') return !!n.imageUrl || n.type === 'image';
     return true;
   });
 
@@ -153,14 +150,11 @@ export const NotificationsPage: React.FC<{
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+      {/* Filter Tabs - Only Zote & Hazijasomwa */}
+      <div className="flex gap-2 pb-1">
         {[
           { id: 'all', label: lang === 'en' ? 'All' : 'Zote', icon: Bell, count: notifications.length },
           { id: 'unread', label: lang === 'en' ? 'Unread' : 'Hazijasomwa', icon: Radio, count: unreadCount },
-          { id: 'offers', label: lang === 'en' ? 'Offers & Deals' : 'Ofa & Punguzo', icon: Flame },
-          { id: 'updates', label: lang === 'en' ? 'Updates' : 'Taarifa', icon: Sparkles },
-          { id: 'images', label: lang === 'en' ? 'Posters / Media' : 'Picha & Mabango', icon: ImageIcon },
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -169,18 +163,18 @@ export const NotificationsPage: React.FC<{
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                "h-8 px-3 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all",
+                "h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-2 transition-all flex-1 justify-center",
                 isActive 
-                  ? "bg-primary text-white shadow-xs" 
+                  ? "bg-primary text-white shadow-sm" 
                   : "bg-card border border-theme text-text2 hover:text-text1"
               )}
             >
-              <Icon size={12} className={isActive ? "text-white" : "text-text3"} />
+              <Icon size={13} className={isActive ? "text-white" : "text-text3"} />
               <span>{tab.label}</span>
-              {tab.count !== undefined && tab.count > 0 && (
+              {tab.count !== undefined && (
                 <span className={cn(
-                  "px-1.5 py-0.2 rounded-full text-[9px] font-black",
-                  isActive ? "bg-white/25 text-white" : "bg-bg3 text-text3"
+                  "px-2 py-0.5 rounded-full text-[10px] font-black",
+                  isActive ? "bg-white/20 text-white" : "bg-bg3 text-text3"
                 )}>
                   {tab.count}
                 </span>
@@ -274,14 +268,19 @@ export const NotificationsPage: React.FC<{
                 )}
 
                 {/* Optional Image Banner / Poster */}
-                {notif.imageUrl && (
+                {notif.imageUrl && notif.imageUrl.length > 5 && (
                   <div 
                     onClick={() => setSelectedImage(notif.imageUrl || null)}
-                    className="my-2.5 rounded-xl overflow-hidden border border-theme bg-bg3/60 relative cursor-pointer group/img max-h-56 flex items-center justify-center shadow-xs"
+                    className="notif-img-container my-2.5 rounded-xl overflow-hidden border border-theme bg-bg3/60 relative cursor-pointer group/img max-h-56 flex items-center justify-center shadow-xs"
                   >
                     <img 
                       src={notif.imageUrl} 
-                      alt={notif.title || 'Notification media'} 
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const parent = (e.target as HTMLElement).closest('.notif-img-container');
+                        if (parent) (parent as HTMLElement).style.display = 'none';
+                      }}
                       className="w-full h-full object-cover group-hover/img:scale-102 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">

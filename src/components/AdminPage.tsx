@@ -1290,21 +1290,43 @@ export const BrandingTab: React.FC = () => {
     setFormData(siteSettings);
   }, [siteSettings]);
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Convert file to base64 Data URL
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setFormData(prev => ({ ...prev, logoUrl: '' }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    await updateSiteSettings(formData);
+    const ok = await updateSiteSettings(formData);
     setIsSaving(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    if (ok) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 4000);
+    }
   };
+
+  const emojiPresets = ['⚡', '💻', '🚀', '🎓', '🌟', '📱', '🔥', '💎', '🛡️'];
 
   return (
     <div className="space-y-4">
       {success && (
-        <div className="p-3 bg-ok/10 border border-ok/20 text-ok text-xs font-bold rounded-xl flex items-center gap-2">
+        <div className="p-3 bg-ok/10 border border-ok/20 text-ok text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
           <CheckCircle size={16} />
-          <span>Branding and website settings updated successfully!</span>
+          <span>Branding imehifadhiwa kikamilifu! Jina na logo vitadumu hata ukirefresh ukurasa.</span>
         </div>
       )}
 
@@ -1315,45 +1337,70 @@ export const BrandingTab: React.FC = () => {
           </div>
           <div>
             <h3 className="font-heading font-black text-sm text-text1">Site Identity & Logo</h3>
-            <p className="text-[11px] text-text3">Weka jina la mfumo na picha ya logo (Website Branding)</p>
+            <p className="text-[11px] text-text3">Weka jina jipya la mfumo na picha ya logo (Website Branding & Persistence)</p>
           </div>
         </div>
 
-        {/* Live Preview */}
-        <div className="p-3 bg-bg3/50 border border-theme rounded-xl flex items-center gap-3">
-          {formData.logoUrl ? (
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-theme bg-card shadow-sm shrink-0">
-              <img src={formData.logoUrl} alt="Logo preview" className="w-full h-full object-cover" />
+        {/* Live Preview Card */}
+        <div className="p-4 bg-bg3/60 border border-theme rounded-2xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {formData.logoUrl ? (
+              <div className="w-12 h-12 rounded-xl overflow-hidden border border-theme bg-card shadow-sm shrink-0 relative group">
+                <img 
+                  src={formData.logoUrl} 
+                  alt="Logo preview" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }} 
+                />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-black text-white text-lg shadow-sm shrink-0">
+                {formData.logoEmoji || '⚡'}
+              </div>
+            )}
+            <div>
+              <div className="text-[10px] text-text3 font-bold uppercase tracking-wider">Muonekano wa Juu (Header Preview):</div>
+              <div className="font-black text-base text-text1 flex items-center gap-1.5 mt-0.5">
+                <span>{formData.siteName || 'CodZnz Pro'}</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">PRO</span>
+              </div>
+              <div className="text-xs text-text3">{formData.siteTagline || 'Tanzania #1 Coding Education Platform'}</div>
             </div>
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-black text-white text-base shadow-sm shrink-0">
-              {formData.logoEmoji || '⚡'}
-            </div>
+          </div>
+          {formData.logoUrl && (
+            <button
+              type="button"
+              onClick={handleRemoveLogo}
+              className="h-8 px-2.5 bg-err/10 hover:bg-err/20 text-err text-xs font-bold rounded-xl flex items-center gap-1 transition-colors"
+              title="Ondoa Picha ya Logo"
+            >
+              <Trash2 size={13} />
+              <span>Ondoa Logo</span>
+            </button>
           )}
-          <div>
-            <div className="text-[10px] text-text3 font-bold uppercase">Header Preview:</div>
-            <div className="font-black text-sm text-text1 flex items-center gap-1.5">
-              <span>{formData.siteName || 'CodZnz Pro'}</span>
-              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">PRO</span>
-            </div>
-            <div className="text-[11px] text-text3">{formData.siteTagline || 'Tanzania #1 Coding Education Platform'}</div>
-          </div>
         </div>
 
+        {/* Website Name */}
         <div>
-          <label className="text-xs font-bold text-text2 block mb-1">Website Name (Jina la Website)</label>
+          <label className="text-xs font-bold text-text2 block mb-1">
+            Website Name (Jina la Website / Mfumo) <span className="text-err">*</span>
+          </label>
           <input 
             type="text" 
             value={formData.siteName || ''} 
             onChange={e => setFormData({ ...formData, siteName: e.target.value })}
-            placeholder="e.g. CodZnz Pro, Zanzibar Code Academy"
+            placeholder="e.g. CodZnz Pro, Zanzibar Code Academy, Swahili Dev Hub"
             required
-            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary font-bold"
           />
+          <p className="text-[10px] text-text3 mt-1">Jina hili litaonekana kwenye Navbar ya juu, Browser Title Tab, na risiti zote.</p>
         </div>
 
+        {/* Tagline / Slogan */}
         <div>
-          <label className="text-xs font-bold text-text2 block mb-1">Tagline / Slogan</label>
+          <label className="text-xs font-bold text-text2 block mb-1">Tagline / Slogan (Kaulimbiu)</label>
           <input 
             type="text" 
             value={formData.siteTagline || ''} 
@@ -1363,27 +1410,70 @@ export const BrandingTab: React.FC = () => {
           />
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-text2 block mb-1">Logo Image URL (Picha ya Logo)</label>
-          <input 
-            type="url" 
-            value={formData.logoUrl || ''} 
-            onChange={e => setFormData({ ...formData, logoUrl: e.target.value })}
-            placeholder="https://example.com/logo.png"
-            className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
-          />
-          <p className="text-[10px] text-text3 mt-1">Unaweza kuweka link ya picha ya logo (PNG, JPG, SVG) au ukiacha wazi itatumia Emoji/Initial.</p>
+        {/* Logo Upload Section */}
+        <div className="space-y-2 pt-1 border-t border-theme">
+          <label className="text-xs font-bold text-text2 block">Picha ya Logo (Logo Image):</label>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Direct Device Upload */}
+            <label className="p-3 bg-bg3 border border-dashed border-theme hover:border-primary rounded-xl flex items-center gap-2.5 cursor-pointer transition-colors group">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Upload size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-text1">Pakia Picha kutoka Simu/PC</div>
+                <div className="text-[10px] text-text3 truncate">PNG, JPG, SVG au WEBP</div>
+              </div>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+              />
+            </label>
+
+            {/* Direct URL Input */}
+            <div className="flex flex-col justify-center">
+              <input 
+                type="url" 
+                value={formData.logoUrl || ''} 
+                onChange={e => setFormData({ ...formData, logoUrl: e.target.value })}
+                placeholder="Au weka Image URL (https://...)"
+                className="w-full h-11 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+              />
+            </div>
+          </div>
         </div>
 
+        {/* Default Logo Emoji */}
         <div>
-          <label className="text-xs font-bold text-text2 block mb-1">Default Logo Emoji (Kama hakuna picha)</label>
-          <input 
-            type="text" 
-            value={formData.logoEmoji || '⚡'} 
-            onChange={e => setFormData({ ...formData, logoEmoji: e.target.value })}
-            maxLength={3}
-            className="w-24 h-10 px-3 text-center text-base bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
-          />
+          <label className="text-xs font-bold text-text2 block mb-1.5">
+            Default Logo Emoji (Kama hakuna picha ya logo)
+          </label>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input 
+              type="text" 
+              value={formData.logoEmoji || '⚡'} 
+              onChange={e => setFormData({ ...formData, logoEmoji: e.target.value })}
+              maxLength={4}
+              className="w-20 h-10 px-2 text-center text-lg bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+            />
+            <div className="flex items-center gap-1">
+              {emojiPresets.map(em => (
+                <button
+                  key={em}
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, logoEmoji: em }))}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border text-sm flex items-center justify-center transition-all",
+                    formData.logoEmoji === em ? "border-primary bg-primary/10 scale-105" : "border-theme bg-bg3 hover:bg-card2"
+                  )}
+                >
+                  {em}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <button 
@@ -1392,7 +1482,7 @@ export const BrandingTab: React.FC = () => {
           className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
         >
           <Save size={15} />
-          {isSaving ? 'Inahifadhi...' : 'Hifadhi Mabadiliko ya Branding'}
+          {isSaving ? 'Inahifadhi Mabadiliko...' : 'Hifadhi Mabadiliko ya Branding'}
         </button>
       </form>
     </div>
