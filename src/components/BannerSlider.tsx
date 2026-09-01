@@ -45,7 +45,7 @@ export const BannerSlider: React.FC<BannerSliderProps> = ({ banners }) => {
           <div className="relative z-10 flex items-center justify-between">
             <span className="inline-flex items-center gap-1 bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
               <Sparkles size={11} className="fill-current" />
-              {banner.badge || 'PRO'}
+              {banner.badge || 'HOT'}
             </span>
             <span className="text-[11px] font-bold text-white/80 bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-full">
               {idx + 1} / {banners.length}

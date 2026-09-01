@@ -124,7 +124,7 @@ export const CertificateOverlay: React.FC<{ title: string; score: number; onClos
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
       doc.setFont('helvetica', 'normal');
-      doc.text('CodZnz Tech Academy', 65, footerY + 9, { align: 'center' });
+      doc.text(`${platformName} Academy`, 65, footerY + 9, { align: 'center' });
 
       // Center Seal
       doc.setFillColor(245, 158, 11);
@@ -148,7 +148,7 @@ export const CertificateOverlay: React.FC<{ title: string; score: number; onClos
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
       doc.setFont('helvetica', 'normal');
-      doc.text('CodZnz Platform Zanzibar', pageWidth - 65, footerY + 9, { align: 'center' });
+      doc.text(`${platformName} Platform`, pageWidth - 65, footerY + 9, { align: 'center' });
 
       // 12. Bottom Serial and Verification
       doc.setFontSize(8);
@@ -156,7 +156,7 @@ export const CertificateOverlay: React.FC<{ title: string; score: number; onClos
       doc.setFont('helvetica', 'normal');
       doc.text(`Nambari ya Cheti: ${serialNo}`, 20, pageHeight - 16);
       doc.text(`Tarehe ya Kutolewa: ${issueDate}`, pageWidth / 2, pageHeight - 16, { align: 'center' });
-      doc.text(`Kagua Mtandaoni: codznz.com/verify/${serialNo.toLowerCase()}`, pageWidth - 20, pageHeight - 16, { align: 'right' });
+      doc.text(`Kagua Mtandaoni: verify/${serialNo.toLowerCase()}`, pageWidth - 20, pageHeight - 16, { align: 'right' });
 
       // Save PDF file
       const fileName = `Cheti_${studentName.replace(/\s+/g, '_')}_${title.slice(0, 15).replace(/\s+/g, '_')}.pdf`;

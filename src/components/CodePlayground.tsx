@@ -25,7 +25,8 @@ import { cn } from '../lib/utils';
 import { PlaygroundSnippet, AIErrExplanation } from '../types';
 
 export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onClose?: () => void }> = ({ initialSnippet, onClose }) => {
-  const { lang, playgroundSnippets, savePlaygroundSnippet, explainCodeErrorWithAI } = useApp();
+  const { lang, playgroundSnippets, savePlaygroundSnippet, explainCodeErrorWithAI, siteSettings } = useApp();
+  const appName = siteSettings?.siteName || 'Amourcodes';
 
   const [activeLang, setActiveLang] = useState<'html' | 'javascript' | 'python'>('html');
   const [code, setCode] = useState<string>(
@@ -66,7 +67,7 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
 </head>
 <body>
   <div class="card">
-    <h2>🎉 Karibu CodZnz Playground!</h2>
+    <h2>🎉 Karibu Playground!</h2>
     <p>Andika HTML, CSS, JavaScript au Python hapa uone matokeo papo hapo.</p>
     <button onclick="badiliRangi()">Bonyeza Hapa</button>
   </div>
@@ -502,7 +503,7 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white">CodZnz AI Code Error Explainer</h3>
+                  <h3 className="text-sm font-black text-white">{appName} AI Code Error Explainer</h3>
                   <p className="text-[10px] text-slate-400">Utatuzi na maelezo ya kina ya Kiswahili</p>
                 </div>
               </div>

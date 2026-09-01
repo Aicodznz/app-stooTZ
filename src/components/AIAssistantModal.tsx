@@ -31,8 +31,11 @@ export const AIAssistantModal: React.FC<{
     generateCourseWithAI, 
     explainCodeErrorWithAI,
     updateCourses,
-    courses
+    courses,
+    siteSettings
   } = useApp();
+
+  const appName = siteSettings?.siteName || 'Amourcodes';
 
   const [activeTab, setActiveTab] = useState<'tutor' | 'generator' | 'explainer'>(defaultTab);
 
@@ -40,7 +43,7 @@ export const AIAssistantModal: React.FC<{
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; code?: string }>>([
     {
       role: 'assistant',
-      text: 'Habari! Mimi ni CodZnz AI Tutor wako wa Kiswahili. Una swali gani kuhusu HTML, CSS, JavaScript, React, Python au API za Tanzania leo?'
+      text: `Habari! Mimi ni ${siteSettings?.siteName || 'Amourcodes'} AI Tutor wako wa Kiswahili. Una swali gani kuhusu HTML, CSS, JavaScript, React, Python au API za Tanzania leo?`
     }
   ]);
   const [inputPrompt, setInputPrompt] = useState('');
@@ -141,7 +144,7 @@ export const AIAssistantModal: React.FC<{
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black text-text1">
-                CodZnz AI Smart Learning Assistant
+                {appName} AI Smart Learning Assistant
               </h3>
               <p className="text-xs text-text3">
                 {lang === 'en' ? 'Swahili AI Coding Tutor, Curriculum Generator & Bug Explainer' : 'Mwalimu wa AI wa Kiswahili, Mfumo wa Kuunda Kozi na Kutatua Makosa'}
@@ -227,7 +230,7 @@ export const AIAssistantModal: React.FC<{
                 >
                   <div className="flex items-center gap-1.5 text-[10px] font-black opacity-75">
                     {m.role === 'assistant' && <Sparkles size={11} className="text-amber-400" />}
-                    <span>{m.role === 'user' ? 'Wewe' : 'CodZnz AI Tutor'}</span>
+                    <span>{m.role === 'user' ? 'Wewe' : `${appName} AI Tutor`}</span>
                   </div>
                   <div className="whitespace-pre-wrap">{m.text}</div>
                 </div>
@@ -355,7 +358,7 @@ export const AIAssistantModal: React.FC<{
                   className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md"
                 >
                   {courseSaved ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-                  <span>{courseSaved ? 'Kozi Imechapishwa kwenye Jukwaa!' : 'Weka Kozi Hii Kwenye CodZnz Pro'}</span>
+                  <span>{courseSaved ? 'Kozi Imechapishwa kwenye Jukwaa!' : `Weka Kozi Hii Kwenye ${appName}`}</span>
                 </button>
               </div>
             )}

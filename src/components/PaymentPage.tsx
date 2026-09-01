@@ -30,49 +30,6 @@ interface ProviderInfo {
   badge: string;
 }
 
-const PROVIDERS: ProviderInfo[] = [
-  {
-    name: 'Vodacom M-Pesa',
-    short: 'M-PESA',
-    type: 'mpesa',
-    color: 'bg-red-600 text-white',
-    tillNumber: '503020',
-    accountName: 'CODZNZ PRO LTD',
-    ussd: '*150*00#',
-    badge: 'Popular'
-  },
-  {
-    name: 'Tigo Pesa / Mixx',
-    short: 'TIGO PESA',
-    type: 'tigopesa',
-    color: 'bg-blue-600 text-white',
-    tillNumber: '503021',
-    accountName: 'CODZNZ PRO LTD',
-    ussd: '*150*01#',
-    badge: 'Instant'
-  },
-  {
-    name: 'Airtel Money',
-    short: 'AIRTEL',
-    type: 'airtel',
-    color: 'bg-rose-500 text-white',
-    tillNumber: '503022',
-    accountName: 'CODZNZ PRO LTD',
-    ussd: '*150*60#',
-    badge: 'Fast'
-  },
-  {
-    name: 'CRDB / Bank Card',
-    short: 'BANK / VISA',
-    type: 'card',
-    color: 'bg-emerald-600 text-white',
-    tillNumber: '0150992348100',
-    accountName: 'CODZNZ PRO TECH',
-    ussd: 'SimBanking App',
-    badge: 'Direct'
-  }
-];
-
 export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => void }> = ({ onBack, onGoToLibrary }) => {
   const { 
     cart, 
@@ -86,8 +43,55 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
     createOrder, 
     ussdSettings, 
     appliedCoupon,
-    triggerDirectUssdPush 
+    triggerDirectUssdPush,
+    siteSettings
   } = useApp();
+
+  const appName = siteSettings?.siteName || 'Amourcodes';
+  const orgName = `${appName.toUpperCase()} LTD`;
+
+  const providers: ProviderInfo[] = [
+    {
+      name: 'Vodacom M-Pesa',
+      short: 'M-PESA',
+      type: 'mpesa',
+      color: 'bg-red-600 text-white',
+      tillNumber: '503020',
+      accountName: orgName,
+      ussd: '*150*00#',
+      badge: 'Popular'
+    },
+    {
+      name: 'Tigo Pesa / Mixx',
+      short: 'TIGO PESA',
+      type: 'tigopesa',
+      color: 'bg-blue-600 text-white',
+      tillNumber: '503021',
+      accountName: orgName,
+      ussd: '*150*01#',
+      badge: 'Instant'
+    },
+    {
+      name: 'Airtel Money',
+      short: 'AIRTEL',
+      type: 'airtel',
+      color: 'bg-rose-500 text-white',
+      tillNumber: '503022',
+      accountName: orgName,
+      ussd: '*150*60#',
+      badge: 'Fast'
+    },
+    {
+      name: 'CRDB / Bank Card',
+      short: 'BANK / VISA',
+      type: 'card',
+      color: 'bg-emerald-600 text-white',
+      tillNumber: '0150992348100',
+      accountName: `${appName.toUpperCase()} TECH`,
+      ussd: 'SimBanking App',
+      badge: 'Direct'
+    }
+  ];
 
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('mpesa');
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone || user?.phoneNumber || '');
@@ -120,7 +124,7 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
   }
 
   const total = Math.max(0, subtotal - discountAmount);
-  const currentProvider = PROVIDERS.find(p => p.type === selectedMethod) || PROVIDERS[0];
+  const currentProvider = providers.find(p => p.type === selectedMethod) || providers[0];
 
   const handleCopyTill = () => {
     navigator.clipboard.writeText(currentProvider.tillNumber);
@@ -303,7 +307,7 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
           {lang === 'en' ? 'Select Payment Method' : 'Chagua Njia ya Malipo'}
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {PROVIDERS.map((prov) => {
+          {providers.map((prov) => {
             const isSelected = selectedMethod === prov.type;
             return (
               <button

@@ -241,11 +241,11 @@ export const SEED_APPS: CodApp[] = [
   },
   {
     id: 'app2',
-    name: 'CodZnz Code Studio',
+    name: 'Code Studio IDE',
     desc: 'Mobile code editor & Python/JS compiler',
     fullDesc: 'Andika na kimbiza msimbo wa JavaScript, Python, na HTML moja kwa moja kwenye simu yako bila kuhitaji kompyuta kubwa.',
     changelog: 'Toleo 1.4\n- Sintaksia yenye rangi (Syntax Highlighting)\n- AI Code Assistant imejumuishwa\n- Hali ya giza ya OLED',
-    developer: 'CodZnz Technologies',
+    developer: 'App Studio Technologies',
     size: '28MB',
     rating: '4.9',
     icon: '💻',
@@ -315,7 +315,7 @@ export const SEED_NOTIFICATIONS: AppNotification[] = [
   },
   {
     id: 'n2',
-    title: 'Karibu CodZnz Pro! 🎉',
+    title: 'Karibu Kwenye Jukwaa! 🎉',
     message: 'Gundua masomo mapya, mitihani, na programu za bure kuanza safari yako ya TEHAMA na kupata vyeti rasmi.',
     type: 'success',
     createdAt: Date.now() - 3600000 * 5,
@@ -353,7 +353,7 @@ export const SEED_DISCUSSIONS: Discussion[] = [
     replies: [
       {
         id: 'rep1',
-        author: 'CodZnz Instructor',
+        author: 'Instructor',
         text: '"var" ina function scope na ina tabia ya hoisting, wakati "let" ina block scope ({}). Daima tumia "let" au "const" kuandika msimbo salama zaidi.',
         createdAt: Date.now() - 86400000 * 1,
         isInstructor: true
@@ -477,7 +477,7 @@ export const SEED_DEVELOPER_APPLICATIONS: DeveloperApplication[] = [
     paymentRef: 'SKE8891JQA',
     status: 'pending',
     portfolioUrl: 'https://github.com/hamisi-dev',
-    devBio: 'Nimetengeneza app ya kusimamia hesabu za maduka (POS) na ninataka kuichapisha kwenye CodZnz Store.',
+    devBio: 'Nimetengeneza app ya kusimamia hesabu za maduka (POS) na ninataka kuichapisha kwenye Store.',
     appliedAt: Date.now() - 3600000 * 3
   }
 ];
@@ -560,7 +560,7 @@ export const SEED_ACHIEVEMENT_BADGES: AchievementBadge[] = [
     id: 'bdg-welcome',
     title: 'Mwanzo wa Safari',
     titleSw: 'Mwanzo wa Safari',
-    desc: 'Karibu CodZnz Pro! Ulisajili akaunti yako ya kwanza kwa mafanikio.',
+    desc: 'Karibu Kwenye Jukwaa! Ulisajili akaunti yako ya kwanza kwa mafanikio.',
     descSw: 'Ulisajili akaunti yako ya kwanza kwa mafanikio.',
     icon: '🚀',
     xpBonus: 50,
@@ -608,7 +608,7 @@ export const SEED_ACHIEVEMENT_BADGES: AchievementBadge[] = [
     id: 'bdg-dev-creator',
     title: 'Developer Mchapishaji',
     titleSw: 'Developer Mchapishaji',
-    desc: 'Tuma au chapisha App yako ya kwanza kwenye CodZnz Store.',
+    desc: 'Tuma au chapisha App yako ya kwanza kwenye App Store.',
     descSw: 'Chapisha App yako ya kwanza kwenye jukwaa.',
     icon: '⚡',
     xpBonus: 500,
@@ -693,7 +693,7 @@ export const SEED_PLAYGROUND_TEMPLATES = [
 </head>
 <body>
   <div class="card">
-    <h2 style="margin:0; font-size:1.1rem; color:#94a3b8;">CodZnz Counter</h2>
+    <h2 style="margin:0; font-size:1.1rem; color:#94a3b8;">Counter App</h2>
     <div id="display" class="count">0</div>
     <div class="btn-group">
       <button onclick="changeCount(-1)">-</button>
@@ -730,7 +730,7 @@ namba1 = 25
 namba2 = 15
 matokeo = hesabu_jumla(namba1, namba2)
 
-print(f"Habari kutoka CodZnz Pro Python!")
+print(f"Habari kutoka Python!")
 print(f"Jumla ya {namba1} + {namba2} ni: {matokeo}")
 
 # Mzunguko wa for
@@ -808,7 +808,7 @@ for i in range(1, 6):
     <div class="avatar">👨‍💻</div>
     <h3 class="name">Juma Ali</h3>
     <span class="badge">Fullstack Coder (Zanzibar)</span>
-    <p class="bio">Najifunza JavaScript na Python kwenye CodZnz Pro. Lengo langu ni kuunda mifumo ya kisasa ya Mtandaoni.</p>
+    <p class="bio">Najifunza JavaScript na Python. Lengo langu ni kuunda mifumo ya kisasa ya Mtandaoni.</p>
     <button class="btn" onclick="alert('Ujumbe umetumwa!')">Tuma Ujumbe</button>
   </div>
 </body>
@@ -819,7 +819,7 @@ for i in range(1, 6):
     title: 'Python Script: Kikokotoo na Orodha',
     language: 'python' as const,
     desc: 'Mfano wa Python wenye functions, loops na dictionaries kwa Kiswahili.',
-    python: `# Kikokotoo cha Ushuru na Punguzo la CodZnz
+    python: `# Kikokotoo cha Ushuru na Punguzo
 def kodi_ya_mauzo(bei, kiwango_kodi=0.18):
     kodi = bei * kiwango_kodi
     jumla = bei + kodi
@@ -994,7 +994,7 @@ console.log(5 === "5"); // Inatoa false`,
       {
         id: 'rep-1',
         authorId: 'u-admin-1',
-        authorName: 'Mwalimu CodZnz Pro',
+        authorName: 'Mwalimu wa Mafunzo',
         authorRole: 'instructor' as const,
         content: 'Habari Kassim! "==" (Loose equality) inalinganisha thamani pekee baada ya kubadili aina (type coercion), ndio maana 5 namba na "5" string zinakuwa sawa. Lakini "===" (Strict equality) inalinganisha thamani PAMOJA na data type. Inashauriwa kutumia "===" kila wakati ili kuepuka bugs.',
         createdAt: Date.now() - 3600000 * 3,

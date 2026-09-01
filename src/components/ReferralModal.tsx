@@ -15,17 +15,20 @@ import {
 } from 'lucide-react';
 
 export const ReferralModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { user, profile, lang, claimReferral, pts } = useApp();
+  const { user, profile, lang, claimReferral, pts, siteSettings } = useApp();
   const [copied, setCopied] = useState(false);
   const [inputCode, setInputCode] = useState('');
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimMsg, setClaimMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const appName = siteSettings?.siteName || 'Amourcodes';
+  const prefix = appName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6) || 'APP';
+
   // Generate clean personalized referral code
   const referralCode = profile?.referralCode || (
     user?.email 
-      ? `CODZNZ-${user.email.split('@')[0].toUpperCase().slice(0, 8)}` 
-      : `CODZNZ-${(profile?.name || 'STUDENT').toUpperCase().slice(0, 6)}77`
+      ? `${prefix}-${user.email.split('@')[0].toUpperCase().slice(0, 8)}` 
+      : `${prefix}-${(profile?.name || 'STUDENT').toUpperCase().slice(0, 6)}77`
   );
 
   const referralLink = `${window.location.origin}?ref=${referralCode}`;
@@ -38,7 +41,7 @@ export const ReferralModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
-      `Habari! Jiunge nami kwenye CodZnz Pro ujifunze Coding, Programu na Web Development kwa Kiswahili na Kiingereza. Tumia msimbo wangu ${referralCode} kupata pointi 100 XP za bure! Bonyeza hapa: ${referralLink}`
+      `Habari! Jiunge nami kwenye ${appName} ujifunze Coding, Programu na Web Development kwa Kiswahili na Kiingereza. Tumia msimbo wangu ${referralCode} kupata pointi 100 XP za bure! Bonyeza hapa: ${referralLink}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };

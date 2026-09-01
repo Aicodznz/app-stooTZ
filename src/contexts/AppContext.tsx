@@ -49,7 +49,7 @@ import {
 } from '../constants';
 
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  siteName: 'CodZnz Pro',
+  siteName: 'Amourcodes',
   siteTagline: 'Tanzania #1 Coding Education Platform',
   logoUrl: '',
   logoEmoji: '⚡',
@@ -60,12 +60,12 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
 
 const DEFAULT_USSD_SETTINGS: UssdSettings = {
   enabled: true,
-  apkName: 'CodZnz_USSD_Push_Gateway_v2.4.apk',
+  apkName: 'USSD_Push_Gateway_v2.4.apk',
   apkVersion: '2.4.0',
-  apkDownloadUrl: 'https://github.com/codznz/ussd-push-apk/releases/download/v2.4.0/CodZnz_USSD_Gateway.apk',
+  apkDownloadUrl: 'https://github.com/gateway/ussd-push-apk/releases/download/v2.4.0/USSD_Gateway.apk',
   ussdPrefix: '*150*',
   autoPushEnabled: true,
-  webhookUrl: 'https://api.codznz.com/v1/ussd-callback',
+  webhookUrl: 'https://api.ussd-gateway.com/v1/ussd-callback',
   gatewayProvider: 'Vodacom / Tigo / Airtel SIM Push Gateway'
 };
 
@@ -456,7 +456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (d.id === discussionId) {
           const newReply = {
             id: 'rep-' + Date.now(),
-            author: state.isAdm ? 'CodZnz Mwalimu Mkuu' : (state.profile?.name || state.user?.displayName || state.user?.email?.split('@')[0] || 'Mwanafunzi'),
+            author: state.isAdm ? `${state.siteSettings?.siteName || 'Amourcodes'} Mwalimu Mkuu` : (state.profile?.name || state.user?.displayName || state.user?.email?.split('@')[0] || 'Mwanafunzi'),
             text,
             createdAt: Date.now(),
             isInstructor: state.isAdm
@@ -952,7 +952,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             {
               id: 'notif-appr-dev-' + Date.now(),
               title: 'Ombi la Developer Limekubaliwa! 🎉',
-              message: `Hongera ${targetApp.userName}! Umewezeshwa kuwa Developer Rasmi kwenye CodZnz Studio.`,
+              message: `Hongera ${targetApp.userName}! Umewezeshwa kuwa Developer Rasmi kwenye ${prev.siteSettings?.siteName || 'Amourcodes'} Studio.`,
               type: 'success',
               actionText: 'Fungua Developer Studio',
               actionUrl: '#dev',
@@ -1322,7 +1322,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       itemId: q.itemId,
       itemTitle: q.itemTitle,
       userId: state.user?.uid || 'guest',
-      userName: state.profile?.name || state.user?.displayName || 'Mwanafunzi CodZnz',
+      userName: state.profile?.name || state.user?.displayName || 'Mwanafunzi',
       userAvatar: state.profile?.photoURL,
       title: q.title,
       details: q.details,
@@ -1351,7 +1351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newReply = {
       id: 'rep-' + Date.now(),
       authorId: state.user?.uid || 'guest',
-      authorName: state.profile?.name || state.user?.displayName || 'CodZnz Member',
+      authorName: state.profile?.name || state.user?.displayName || `${state.siteSettings?.siteName || 'Amourcodes'} Member`,
       authorAvatar: state.profile?.photoURL,
       authorRole: (isInstructor ? 'instructor' : 'student') as 'instructor' | 'student',
       content,

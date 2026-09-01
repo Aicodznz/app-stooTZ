@@ -34,7 +34,7 @@ interface AuthPageProps {
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ mode: initialMode, onSwitch, onSuccess }) => {
-  const { lang, users } = useApp();
+  const { lang, users, siteSettings } = useApp();
   const [currentMode, setCurrentMode] = useState<'login' | 'register'>(initialMode);
   const [identifier, setIdentifier] = useState(''); // Email, Name, or Phone in login mode
   const [email, setEmail] = useState('');

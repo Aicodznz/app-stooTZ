@@ -1732,7 +1732,7 @@ export const UssdApkTab: React.FC = () => {
               type="text" 
               value={formData.apkName || ''} 
               onChange={e => setFormData({ ...formData, apkName: e.target.value })}
-              placeholder="e.g. CodZnz_USSD_Gateway.apk"
+              placeholder="e.g. USSD_Push_Gateway.apk"
               className="w-full h-10 px-3 text-xs bg-bg3 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
             />
           </div>
