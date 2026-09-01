@@ -693,21 +693,21 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
   return (
     <div className="page-anim space-y-6 max-w-4xl mx-auto pb-10">
       {/* Creator Hub Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 border border-indigo-500/30 rounded-3xl p-6 text-white shadow-xl">
-        <div className="absolute -right-10 -bottom-10 opacity-15 pointer-events-none">
-          <Code2 size={240} />
+      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 border border-theme-strong rounded-3xl p-6 text-white shadow-lg">
+        <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none text-indigo-400">
+          <Code2 size={220} />
         </div>
         
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-black tracking-wide uppercase text-indigo-200 border border-white/10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-bold tracking-wide uppercase text-indigo-200 border border-white/10">
               <Sparkles size={13} className="text-amber-300" />
               <span>{lang === 'en' ? 'Developer & Creator Studio' : 'Kituo cha Wasanidi na Wachapishaji'}</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black font-heading tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black font-heading tracking-tight text-white">
               {lang === 'en' ? 'Publish Apps & Courses' : 'Chapisha Programu na Masomo Yako'}
             </h2>
-            <p className="text-xs sm:text-sm text-indigo-200/90 max-w-xl">
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
               {lang === 'en'
                 ? `Upload software tools, code editors, online bootcamps, and quiz certifications directly to the ${siteSettings?.siteName || 'Amourcodes'} marketplace.`
                 : `Pakia programu zako za koding, mifumo, kozi za video, na mitihani ya vyeti moja kwa moja kwenye soko la ${siteSettings?.siteName || 'Amourcodes'}.`}
@@ -716,17 +716,17 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
 
           {/* Quick Metrics */}
           <div className="flex gap-2 shrink-0">
-            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[85px]">
-              <div className="text-lg font-black text-white">{apps.length}</div>
-              <div className="text-[10px] font-bold text-indigo-200 uppercase">Apps</div>
+            <div className="bg-slate-950/60 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[80px]">
+              <div className="text-base font-black text-white">{apps.length}</div>
+              <div className="text-[10px] font-semibold text-slate-400 uppercase">Apps</div>
             </div>
-            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[85px]">
-              <div className="text-lg font-black text-amber-300">{courses.length}</div>
-              <div className="text-[10px] font-bold text-indigo-200 uppercase">Courses</div>
+            <div className="bg-slate-950/60 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[80px]">
+              <div className="text-base font-black text-amber-300">{courses.length}</div>
+              <div className="text-[10px] font-semibold text-slate-400 uppercase">Courses</div>
             </div>
-            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[85px]">
-              <div className="text-lg font-black text-emerald-400">80%</div>
-              <div className="text-[10px] font-bold text-indigo-200 uppercase">Share</div>
+            <div className="bg-slate-950/60 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[80px]">
+              <div className="text-base font-black text-emerald-400">80%</div>
+              <div className="text-[10px] font-semibold text-slate-400 uppercase">Share</div>
             </div>
           </div>
         </div>
@@ -734,8 +734,8 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
 
       {/* Floating Notification */}
       {successMsg && (
-        <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center gap-3 text-xs font-bold shadow-lg animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 size={18} className="shrink-0 text-emerald-400" />
+        <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 rounded-2xl flex items-center gap-3 text-xs font-bold shadow-xs animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
           <span>{successMsg}</span>
         </div>
       )}
@@ -744,26 +744,26 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setShowPayoutModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border-emerald-500/40 shadow-sm"
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-xs"
         >
           <Wallet size={15} />
-          <span>{lang === 'en' ? '💰 Wallet & Payouts' : '💰 Toa Pesa (Payouts)'}</span>
+          <span>{lang === 'en' ? 'Wallet & Payouts' : 'Toa Pesa (Payouts)'}</span>
         </button>
 
         <button
           onClick={() => setShowAICourseModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border-purple-500/40 shadow-sm"
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/20 shadow-xs"
         >
-          <Wand2 size={15} className="text-amber-300" />
-          <span>{lang === 'en' ? '✨ AI Course Builder' : '✨ Unda Kozi na AI'}</span>
+          <Wand2 size={15} className="text-amber-400" />
+          <span>{lang === 'en' ? 'AI Course Builder' : 'Unda Kozi na AI'}</span>
         </button>
 
         <button
           onClick={() => setActiveTab('app')}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0",
+            "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
             activeTab === 'app'
-              ? "bg-primary text-white border-primary shadow-md shadow-primary/20 scale-[1.02]"
+              ? "bg-primary text-white border-primary shadow-xs"
               : "bg-card hover:bg-card2 text-text2 hover:text-text1 border-theme"
           )}
         >
@@ -774,9 +774,9 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
         <button
           onClick={() => setActiveTab('course')}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0",
+            "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
             activeTab === 'course'
-              ? "bg-primary text-white border-primary shadow-md shadow-primary/20 scale-[1.02]"
+              ? "bg-primary text-white border-primary shadow-xs"
               : "bg-card hover:bg-card2 text-text2 hover:text-text1 border-theme"
           )}
         >
@@ -787,22 +787,22 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
         <button
           onClick={() => setActiveTab('test')}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0",
+            "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
             activeTab === 'test'
-              ? "bg-primary text-white border-primary shadow-md shadow-primary/20 scale-[1.02]"
+              ? "bg-primary text-white border-primary shadow-xs"
               : "bg-card hover:bg-card2 text-text2 hover:text-text1 border-theme"
           )}
         >
           <GraduationCap size={15} />
-          <span>{lang === 'en' ? '+ Create Quiz/Test' : '+ Unda Mtihani'}</span>
+          <span>{lang === 'en' ? '+ Create Quiz' : '+ Unda Mtihani'}</span>
         </button>
 
         <button
           onClick={() => setActiveTab('lecture')}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0",
+            "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
             activeTab === 'lecture'
-              ? "bg-primary text-white border-primary shadow-md shadow-primary/20 scale-[1.02]"
+              ? "bg-primary text-white border-primary shadow-xs"
               : "bg-card hover:bg-card2 text-text2 hover:text-text1 border-theme"
           )}
         >
@@ -813,9 +813,9 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
         <button
           onClick={() => setActiveTab('catalog')}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0",
+            "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
             activeTab === 'catalog'
-              ? "bg-primary text-white border-primary shadow-md shadow-primary/20 scale-[1.02]"
+              ? "bg-primary text-white border-primary shadow-xs"
               : "bg-card hover:bg-card2 text-text2 hover:text-text1 border-theme"
           )}
         >
@@ -827,9 +827,9 @@ export const DeveloperPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) 
         <button
           onClick={() => setActiveTab('devtools')}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all border shrink-0",
+            "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
             activeTab === 'devtools'
-              ? "bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20"
+              ? "bg-slate-800 text-white border-slate-700 shadow-xs"
               : "bg-card hover:bg-card2 text-text3 hover:text-text1 border-theme"
           )}
         >

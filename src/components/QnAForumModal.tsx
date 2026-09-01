@@ -134,19 +134,19 @@ export const QnAForumModal: React.FC<{
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => { setShowAskForm(!showAskForm); setSelectedQuestion(null); }}
-            className="h-10 px-4 bg-primary hover:opacity-90 active:scale-95 text-white text-xs font-black rounded-xl shadow-md shadow-primary/20 flex items-center gap-1.5 transition-all"
+            className="h-10 px-3.5 sm:px-4 bg-primary hover:bg-primary/90 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0"
           >
             <Plus size={15} />
-            <span>{lang === 'en' ? 'Ask a Question' : 'Uliza Swali Jipya'}</span>
+            <span>{lang === 'en' ? 'Ask Question' : 'Uliza Swali'}</span>
           </button>
 
           {!isEmbedded && onClose && (
             <button
               onClick={onClose}
-              className="w-10 h-10 bg-card2 hover:bg-card border border-theme text-text2 hover:text-text1 rounded-xl flex items-center justify-center"
+              className="w-10 h-10 bg-card2/80 hover:bg-card2 border border-theme text-text2 hover:text-text1 rounded-xl flex items-center justify-center shrink-0"
             >
               <X size={18} />
             </button>
@@ -156,9 +156,9 @@ export const QnAForumModal: React.FC<{
 
       {/* Ask Question Form Drawer */}
       {showAskForm && (
-        <form onSubmit={handleAskQuestion} className="bg-card border border-primary/40 rounded-3xl p-5 shadow-lg space-y-3 animate-in fade-in">
-          <div className="flex items-center justify-between border-b border-theme pb-2">
-            <h4 className="text-xs font-black text-primary uppercase tracking-wider flex items-center gap-1.5">
+        <form onSubmit={handleAskQuestion} className="bg-card border border-primary/30 rounded-3xl p-5 shadow-sm space-y-3.5 animate-in fade-in">
+          <div className="flex items-center justify-between border-b border-theme pb-2.5">
+            <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
               <Plus size={14} />
               <span>{lang === 'en' ? 'Post a New Coding Question' : 'Tuma Swali Lako kwenye Jukwaa'}</span>
             </h4>
@@ -166,7 +166,7 @@ export const QnAForumModal: React.FC<{
           </div>
 
           <div>
-            <label className="text-[11px] font-black text-text3 uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-text2 block mb-1">
               {lang === 'en' ? 'Question Title / Error Headline' : 'Kichwa cha Swali / Error unayoipata'} *
             </label>
             <input
@@ -175,12 +175,12 @@ export const QnAForumModal: React.FC<{
               placeholder="Mfano: Kwa nini 'undefined is not a function' inatokea kwenye React?"
               value={qTitle}
               onChange={e => setQTitle(e.target.value)}
-              className="w-full h-11 px-3.5 bg-card2 border border-theme rounded-xl text-xs font-bold text-text1 outline-none focus:border-primary"
+              className="w-full h-11 px-3.5 bg-card2 border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-colors"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-black text-text3 uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-text2 block mb-1">
               {lang === 'en' ? 'Detailed Explanation' : 'Maelezo ya Kina'} *
             </label>
             <textarea
@@ -189,7 +189,7 @@ export const QnAForumModal: React.FC<{
               placeholder="Eleza kile unachojaribu kufanya na wapi umekwama..."
               value={qDetails}
               onChange={e => setQDetails(e.target.value)}
-              className="w-full p-3 bg-card2 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary resize-none"
+              className="w-full p-3 bg-card2 border border-theme rounded-xl text-xs text-text1 outline-none focus:border-primary resize-none transition-colors"
             />
           </div>
 

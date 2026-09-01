@@ -158,12 +158,14 @@ export const AIAssistantModal: React.FC<{
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-theme pb-2">
+        <div className="flex items-center gap-1.5 p-1 bg-card2/80 border border-theme rounded-2xl">
           <button
             onClick={() => setActiveTab('tutor')}
             className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5",
-              activeTab === 'tutor' ? "bg-primary text-white" : "text-text3 hover:text-text1"
+              "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap",
+              activeTab === 'tutor' 
+                ? "bg-primary text-white shadow-xs" 
+                : "text-text2 hover:text-text1 hover:bg-card/50"
             )}
           >
             <Bot size={14} />
@@ -173,8 +175,10 @@ export const AIAssistantModal: React.FC<{
           <button
             onClick={() => setActiveTab('explainer')}
             className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5",
-              activeTab === 'explainer' ? "bg-primary text-white" : "text-text3 hover:text-text1"
+              "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap",
+              activeTab === 'explainer' 
+                ? "bg-primary text-white shadow-xs" 
+                : "text-text2 hover:text-text1 hover:bg-card/50"
             )}
           >
             <Code2 size={14} />
@@ -185,12 +189,14 @@ export const AIAssistantModal: React.FC<{
             <button
               onClick={() => setActiveTab('generator')}
               className={cn(
-                "px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5",
-                activeTab === 'generator' ? "bg-purple-600 text-white" : "text-text3 hover:text-purple-400"
+                "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap",
+                activeTab === 'generator' 
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs" 
+                  : "text-text2 hover:text-text1 hover:bg-card/50"
               )}
             >
-              <Wand2 size={14} />
-              <span>AI Course Generator ✨</span>
+              <Wand2 size={14} className="text-amber-300" />
+              <span>AI Course Generator</span>
             </button>
           )}
         </div>
@@ -209,7 +215,7 @@ export const AIAssistantModal: React.FC<{
                 <button
                   key={idx}
                   onClick={() => handleSendTutorMessage(chip)}
-                  className="px-2.5 py-1 bg-card2 hover:border-primary border border-theme rounded-lg text-[11px] font-bold text-text2 hover:text-text1 whitespace-nowrap transition-all"
+                  className="px-3 py-1.5 bg-card2 hover:border-primary/50 border border-theme rounded-xl text-[11px] font-medium text-text2 hover:text-text1 whitespace-nowrap transition-all shadow-xs"
                 >
                   ⚡ {chip}
                 </button>
@@ -217,27 +223,27 @@ export const AIAssistantModal: React.FC<{
             </div>
 
             {/* Chat Box */}
-            <div className="space-y-3 max-h-[380px] overflow-y-auto p-3 bg-card2/40 border border-theme rounded-2xl">
+            <div className="space-y-3 max-h-[380px] overflow-y-auto p-4 bg-card2/50 border border-theme rounded-2xl">
               {messages.map((m, idx) => (
                 <div
                   key={idx}
                   className={cn(
-                    "p-3.5 rounded-2xl text-xs space-y-1.5 max-w-[88%]",
+                    "p-3.5 rounded-2xl text-xs space-y-1.5 max-w-[88%] shadow-xs",
                     m.role === 'user'
-                      ? "ml-auto bg-primary text-white font-bold"
-                      : "mr-auto bg-card border border-theme text-text1 leading-relaxed shadow-sm"
+                      ? "ml-auto bg-primary text-white font-medium"
+                      : "mr-auto bg-card border border-theme text-text1 leading-relaxed"
                   )}
                 >
-                  <div className="flex items-center gap-1.5 text-[10px] font-black opacity-75">
-                    {m.role === 'assistant' && <Sparkles size={11} className="text-amber-400" />}
+                  <div className="flex items-center gap-1.5 text-[10px] font-black opacity-80">
+                    {m.role === 'assistant' && <Sparkles size={12} className="text-amber-400" />}
                     <span>{m.role === 'user' ? 'Wewe' : `${appName} AI Tutor`}</span>
                   </div>
-                  <div className="whitespace-pre-wrap">{m.text}</div>
+                  <div className="whitespace-pre-wrap leading-relaxed">{m.text}</div>
                 </div>
               ))}
               {isAsking && (
-                <div className="p-3 bg-card border border-theme rounded-2xl text-xs text-text3 flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="p-3.5 bg-card border border-theme rounded-2xl text-xs text-text2 flex items-center gap-2.5 shadow-xs">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
                   <span>AI Inaandika ufafanuzi wa Kiswahili...</span>
                 </div>
               )}
@@ -251,14 +257,14 @@ export const AIAssistantModal: React.FC<{
                 value={inputPrompt}
                 onChange={e => setInputPrompt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendTutorMessage()}
-                className="flex-1 h-11 px-4 bg-card border border-theme rounded-xl text-xs font-bold text-text1 outline-none focus:border-primary"
+                className="flex-1 h-11 px-4 bg-card border border-theme rounded-xl text-xs font-medium text-text1 outline-none focus:border-primary transition-colors"
               />
               <button
                 onClick={() => handleSendTutorMessage()}
                 disabled={isAsking || !inputPrompt.trim()}
-                className="h-11 px-4 bg-primary hover:opacity-90 active:scale-95 disabled:opacity-40 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md"
+                className="h-11 px-5 bg-primary hover:bg-primary/90 active:scale-95 disabled:opacity-40 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all shrink-0"
               >
-                <Send size={15} />
+                <Send size={14} />
                 <span>Tuma</span>
               </button>
             </div>

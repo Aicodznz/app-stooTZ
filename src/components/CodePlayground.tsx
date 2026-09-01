@@ -83,6 +83,7 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
 </html>`
   );
 
+  const [mobilePane, setMobilePane] = useState<'editor' | 'preview'>('editor');
   const [snippetTitle, setSnippetTitle] = useState(initialSnippet?.title || 'Programu Yangu Mpya');
   const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -381,10 +382,37 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
         </div>
       )}
 
+      {/* Mobile Pane Switcher (visible on small screens) */}
+      <div className="flex lg:hidden items-center p-1 bg-card2 border border-theme rounded-2xl">
+        <button
+          onClick={() => setMobilePane('editor')}
+          className={cn(
+            "flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+            mobilePane === 'editor' ? "bg-primary text-white shadow-xs" : "text-text2 hover:text-text1"
+          )}
+        >
+          <Code2 size={14} />
+          <span>{lang === 'en' ? 'Code Editor' : 'Msimbo (Code)'}</span>
+        </button>
+        <button
+          onClick={() => { setMobilePane('preview'); runWebCode(); }}
+          className={cn(
+            "flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+            mobilePane === 'preview' ? "bg-primary text-white shadow-xs" : "text-text2 hover:text-text1"
+          )}
+        >
+          <Play size={14} />
+          <span>{lang === 'en' ? 'Live Preview' : 'Matokeo (Preview)'}</span>
+        </button>
+      </div>
+
       {/* Main Sandbox Grid (Editor + Live Output) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[500px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[480px]">
         {/* LEFT: Code Editor Pane */}
-        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 flex flex-col justify-between shadow-lg">
+        <div className={cn(
+          "bg-slate-950 border border-slate-800 rounded-3xl p-4 flex flex-col justify-between shadow-lg",
+          mobilePane === 'preview' ? "hidden lg:flex" : "flex"
+        )}>
           <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2">
             <div className="flex items-center gap-2">
               <FileCode size={16} className="text-indigo-400" />
@@ -415,7 +443,7 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
             value={code}
             onChange={e => setCode(e.target.value)}
             spellCheck={false}
-            className="w-full flex-1 min-h-[380px] bg-transparent text-slate-100 font-mono text-xs sm:text-sm p-2 outline-none resize-none leading-relaxed selection:bg-indigo-600/40"
+            className="w-full flex-1 min-h-[360px] bg-transparent text-slate-100 font-mono text-xs sm:text-sm p-2 outline-none resize-none leading-relaxed selection:bg-indigo-600/40"
             placeholder={lang === 'en' ? 'Write your code here...' : 'Andika kodi yako hapa...'}
           />
 
@@ -426,7 +454,10 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
         </div>
 
         {/* RIGHT: Live Preview & Terminal Pane */}
-        <div className="flex flex-col gap-4">
+        <div className={cn(
+          "flex flex-col gap-4",
+          mobilePane === 'editor' ? "hidden lg:flex" : "flex"
+        )}>
           {/* Web Preview Frame */}
           <div className="bg-card border border-theme rounded-3xl overflow-hidden flex flex-col flex-1 shadow-sm min-h-[280px]">
             <div className="bg-card2 border-b border-theme px-4 py-2 flex items-center justify-between">
@@ -455,10 +486,10 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
                 ref={iframeRef}
                 title="Live Sandbox Output"
                 sandbox="allow-scripts allow-modals allow-same-origin"
-                className="w-full flex-1 min-h-[240px] bg-white border-0"
+                className="w-full flex-1 min-h-[260px] bg-white border-0"
               />
             ) : (
-              <div className="p-4 bg-slate-950 text-emerald-400 font-mono text-xs flex-1 min-h-[240px] overflow-y-auto space-y-1">
+              <div className="p-4 bg-slate-950 text-emerald-400 font-mono text-xs flex-1 min-h-[260px] overflow-y-auto space-y-1">
                 {consoleOutput.length > 0 ? (
                   consoleOutput.map((log, idx) => (
                     <div key={idx} className={cn(log.includes('Error') ? "text-rose-400" : "text-emerald-400")}>
@@ -477,16 +508,20 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-mono max-h-[140px] overflow-y-auto">
               <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase font-bold mb-1 border-b border-slate-900 pb-1">
                 <span className="flex items-center gap-1"><Terminal size={12} /> Console Output</span>
-                <button onClick={() => setConsoleOutput([])} className="hover:text-slate-300">Clear</button>
+                {consoleOutput.length > 0 && (
+                  <button onClick={() => setConsoleOutput([])} className="hover:text-slate-300">Clear</button>
+                )}
               </div>
-              {consoleOutput.length === 0 ? (
-                <span className="text-slate-600 italic">Hakuna logs kwa sasa. Tumia console.log(...)</span>
+              {consoleOutput.length > 0 ? (
+                <div className="space-y-1">
+                  {consoleOutput.map((log, idx) => (
+                    <div key={idx} className={cn(log.includes('ERROR') ? "text-rose-400 font-bold" : "text-slate-300")}>
+                      {log}
+                    </div>
+                  ))}
+                </div>
               ) : (
-                consoleOutput.map((line, i) => (
-                  <div key={i} className={cn("text-[11px]", line.includes('[ERROR]') ? "text-rose-400 font-bold" : "text-slate-300")}>
-                    {line}
-                  </div>
-                ))
+                <div className="text-slate-600 italic">Logs za JavaScript zitaonekana hapa...</div>
               )}
             </div>
           )}
