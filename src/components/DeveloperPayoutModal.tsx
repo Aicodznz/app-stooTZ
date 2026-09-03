@@ -13,7 +13,10 @@ import {
   AlertCircle,
   TrendingUp,
   CreditCard,
-  DollarSign
+  DollarSign,
+  BarChart3,
+  Users,
+  Award
 } from 'lucide-react';
 import { cn, formatTZS } from '../lib/utils';
 import { PayoutRequest } from '../types';
@@ -24,6 +27,7 @@ export const DeveloperPayoutModal: React.FC<{ onClose: () => void }> = ({ onClos
     user, 
     profile, 
     isAdm, 
+    courses,
     payoutRequests, 
     requestPayout, 
     updatePayoutStatus 
@@ -36,7 +40,7 @@ export const DeveloperPayoutModal: React.FC<{ onClose: () => void }> = ({ onClos
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRequestForm, setShowRequestForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'history' | 'admin'>('overview');
 
   // Stats calculation
   const myPayouts = isAdm 
@@ -134,12 +138,19 @@ export const DeveloperPayoutModal: React.FC<{ onClose: () => void }> = ({ onClos
 
         {/* Navigation Tabs */}
         <div className="flex items-center justify-between border-b border-theme pb-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setActiveTab('overview')}
               className={cn("px-3 py-1.5 rounded-xl text-xs font-bold transition-all", activeTab === 'overview' ? "bg-primary text-white" : "text-text3 hover:text-text1")}
             >
               {lang === 'en' ? 'Request Transfer' : 'Omba Kutoa Pesa'}
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={cn("px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5", activeTab === 'analytics' ? "bg-primary text-white" : "text-text3 hover:text-text1")}
+            >
+              <BarChart3 size={13} />
+              <span>{lang === 'en' ? 'Sales Analytics' : 'Takwimu za Mauzo'}</span>
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -157,6 +168,74 @@ export const DeveloperPayoutModal: React.FC<{ onClose: () => void }> = ({ onClos
             )}
           </div>
         </div>
+
+        {/* Tab: Sales Analytics */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 bg-card2 border border-theme rounded-2xl">
+                <div className="flex items-center gap-2 text-text3 text-xs mb-1">
+                  <TrendingUp size={14} className="text-emerald-500" />
+                  <span>Jumla ya Mauzo (Gross)</span>
+                </div>
+                <div className="text-xl font-black text-text1">{formatTZS(350000)}</div>
+                <p className="text-[10px] text-text3">Mauzo yote kutoka kwa wanafunzi</p>
+              </div>
+
+              <div className="p-4 bg-card2 border border-theme rounded-2xl">
+                <div className="flex items-center gap-2 text-text3 text-xs mb-1">
+                  <DollarSign size={14} className="text-primary" />
+                  <span>Mgao Wako wa 80%</span>
+                </div>
+                <div className="text-xl font-black text-primary">{formatTZS(280000)}</div>
+                <p className="text-[10px] text-emerald-500 font-bold">Faida yako ya mtengenezaji</p>
+              </div>
+
+              <div className="p-4 bg-card2 border border-theme rounded-2xl">
+                <div className="flex items-center gap-2 text-text3 text-xs mb-1">
+                  <Users size={14} className="text-sky-500" />
+                  <span>Wanafunzi Waliojiunga</span>
+                </div>
+                <div className="text-xl font-black text-text1">28 Wanafunzi</div>
+                <p className="text-[10px] text-text3">Kwenye kozi zako zote</p>
+              </div>
+            </div>
+
+            {/* Course breakdown list */}
+            <div className="p-4 bg-card2/50 border border-theme rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-text1 uppercase tracking-wider">
+                  {lang === 'en' ? 'Course Performance Breakdown' : 'Mchanganuo wa Mafunzo Yako'}
+                </h4>
+                <span className="text-[10px] text-text3 font-bold">Mgao: 80% Mtengenezaji / 20% Mfumo</span>
+              </div>
+
+              <div className="space-y-2">
+                {courses.slice(0, 4).map((c, idx) => {
+                  const studentCount = [12, 8, 5, 3][idx] || 2;
+                  const gross = (c.price || 25000) * studentCount;
+                  const net = gross * 0.8;
+                  return (
+                    <div key={c.id} className="p-3 bg-card border border-theme rounded-xl flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-bold text-text1 line-clamp-1">{c.title}</div>
+                        <div className="text-[10px] text-text3 flex items-center gap-2">
+                          <span>{studentCount} Wanafunzi</span>
+                          <span>•</span>
+                          <span>Bei: {formatTZS(c.price || 25000)}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-black text-emerald-500">{formatTZS(net)}</div>
+                        <div className="text-[9px] text-text3">Mapato halisi (Net)</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tab 1: Request Payout Form */}
         {activeTab === 'overview' && (

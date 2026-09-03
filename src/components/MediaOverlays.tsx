@@ -3,6 +3,9 @@ import { ContentItem, Episode, AILessonSummary } from '../types';
 import { 
   X, 
   ChevronLeft, 
+  ChevronRight,
+  SkipForward,
+  SkipBack,
   MessageSquare, 
   Play, 
   CheckCircle2, 
@@ -20,7 +23,9 @@ import {
   UserCheck,
   Star,
   Code2,
-  Bot
+  Bot,
+  Award,
+  Zap
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
@@ -28,9 +33,12 @@ import { CodePlayground } from './CodePlayground';
 import { AIAssistantModal } from './AIAssistantModal';
 
 export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => void }> = ({ item, onClose }) => {
-  const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang, reviews, addReview, summarizeLessonWithAI } = useApp();
+  const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang, reviews, addReview, summarizeLessonWithAI, addPoints } = useApp();
   const [currIdx, setCurrIdx] = useState(0);
   const [activeTab, setActiveTab] = useState<'playlist' | 'qa' | 'notes' | 'reviews'>('playlist');
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
+  const [showXpAlert, setShowXpAlert] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [note, setNote] = useState(() => localStorage.getItem(`note_${item.id}_${currIdx}`) || '');
@@ -95,8 +103,43 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
     setTimeout(() => setReviewSubmitted(false), 3000);
   };
 
+  const handleNextEpisode = () => {
+    if (currIdx < episodes.length - 1) {
+      // Auto-mark current as completed and award XP if not already done
+      if (!completedEpisodes[`${item.id}_${currIdx}`]) {
+        toggleEpisodeComplete(item.id, currIdx);
+        addPoints(15);
+        setShowXpAlert(true);
+        setTimeout(() => setShowXpAlert(false), 2500);
+      }
+      setCurrIdx(currIdx + 1);
+    } else {
+      // Finished all episodes!
+      if (!completedEpisodes[`${item.id}_${currIdx}`]) {
+        toggleEpisodeComplete(item.id, currIdx);
+        addPoints(50);
+        setShowXpAlert(true);
+        setTimeout(() => setShowXpAlert(false), 3000);
+      }
+    }
+  };
+
+  const handlePrevEpisode = () => {
+    if (currIdx > 0) {
+      setCurrIdx(currIdx - 1);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[150] bg-[#070710] flex flex-col page-anim text-white select-none">
+      {/* XP Bonus Toast */}
+      {showXpAlert && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[200] bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs animate-bounce">
+          <Zap size={16} fill="currentColor" />
+          <span>{lang === 'en' ? 'Lesson Completed! +15 XP Earned 🔥' : 'Somo Limekamilika! +15 XP Umejipatia 🔥'}</span>
+        </div>
+      )}
+
       {/* Top Bar */}
       <header className="h-14 flex items-center px-4 justify-between bg-black/70 backdrop-blur-md border-b border-white/10 shrink-0">
         <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-transform">
@@ -138,6 +181,64 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
       {/* Progress Bar under video */}
       <div className="w-full h-1 bg-white/10">
         <div className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500" style={{ width: `${progress}%` }} />
+      </div>
+
+      {/* Smart Video Controls Strip: Next/Prev & Speed Controls */}
+      <div className="bg-black/60 border-b border-white/10 px-3 py-2 flex items-center justify-between gap-2 shrink-0 flex-wrap text-xs">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handlePrevEpisode}
+            disabled={currIdx === 0}
+            className="h-7 px-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all"
+            title="Somo Lililopita"
+          >
+            <SkipBack size={12} />
+            <span className="hidden sm:inline">{lang === 'en' ? 'Prev' : 'Nyuma'}</span>
+          </button>
+
+          <button
+            onClick={handleNextEpisode}
+            className={cn(
+              "h-7 px-3 rounded-lg text-[11px] font-black flex items-center gap-1 shadow-sm transition-all",
+              currIdx === episodes.length - 1
+                ? "bg-amber-500 hover:bg-amber-400 text-slate-950"
+                : "bg-primary hover:bg-primary/90 text-white"
+            )}
+            title="Somo Linalofuata"
+          >
+            <span>{currIdx === episodes.length - 1 ? (lang === 'en' ? 'Finish Course 🎉' : 'Kamilisha Kozi 🎉') : (lang === 'en' ? 'Next Lesson' : 'Somo Linalofuata')}</span>
+            <SkipForward size={12} />
+          </button>
+        </div>
+
+        {/* Speed Selector & Auto-Advance */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white/10 rounded-lg p-0.5">
+            {[0.75, 1.0, 1.25, 1.5].map((speed) => (
+              <button
+                key={speed}
+                onClick={() => setPlaybackSpeed(speed)}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                  playbackSpeed === speed ? "bg-primary text-white" : "text-white/60 hover:text-white"
+                )}
+              >
+                {speed}x
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setAutoAdvance(!autoAdvance)}
+            className={cn(
+              "px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all",
+              autoAdvance ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-white/50"
+            )}
+          >
+            <Zap size={10} />
+            <span className="hidden sm:inline">Auto-Next</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

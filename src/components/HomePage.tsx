@@ -14,7 +14,8 @@ import { QnAForumModal } from './QnAForumModal';
 import { StudyNotesCheatsheetModal } from './StudyNotesCheatsheetModal';
 import { AIAssistantModal } from './AIAssistantModal';
 import { Category, LearningBundle } from '../types';
-import { ChevronLeft, Sparkles, Smartphone, Gift, Award, Code2, MessageSquare, BookOpen, Bot } from 'lucide-react';
+import { ChevronLeft, Sparkles, Smartphone, Gift, Award, Code2, MessageSquare, BookOpen, Bot, Flame, Zap, Trophy, ChevronRight } from 'lucide-react';
+import { getXpLevelInfo } from '../lib/utils';
 
 export const HomePage: React.FC<{ 
   onOpenApp: (id: string) => void; 
@@ -22,7 +23,7 @@ export const HomePage: React.FC<{
   onOpenContent: (id: string) => void;
   onOpenCart?: () => void;
 }> = ({ onOpenApp, onOpenLB, onOpenContent, onOpenCart }) => {
-  const { banners, apps, courses, tests, lectures, lang, addToCart } = useApp();
+  const { banners, apps, courses, tests, lectures, lang, addToCart, pts, strk } = useApp();
   const [subView, setSubView] = useState<Category | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showBadgesModal, setShowBadgesModal] = useState(false);
@@ -30,6 +31,8 @@ export const HomePage: React.FC<{
   const [showQnA, setShowQnA] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+
+  const xpInfo = getXpLevelInfo(pts || 0);
 
   const getSubContent = () => {
     switch (subView) {
@@ -64,6 +67,57 @@ export const HomePage: React.FC<{
         <>
           {/* Top Banner Carousel */}
           <BannerSlider banners={banners} />
+
+          {/* Daily Learning Streak & XP Level Card */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-card to-card border border-amber-500/25 rounded-2xl p-3.5 sm:p-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <Flame size={22} className="animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-black text-text1">
+                      {strk || 1} {lang === 'en' ? 'Day Streak' : 'Siku Mfululizo'}
+                    </span>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded-full">
+                      Level {xpInfo.level}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-text3 flex items-center gap-1 mt-0.5">
+                    <Zap size={11} className="text-primary" />
+                    <span className="font-semibold text-text2">{xpInfo.title}</span>
+                    <span className="text-text3">• {pts || 0} XP</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress & Quick Links */}
+              <div className="flex items-center gap-2 sm:max-w-[220px] w-full justify-between sm:justify-end">
+                <div className="w-full sm:w-28 space-y-1">
+                  <div className="flex justify-between text-[9px] text-text3 font-medium">
+                    <span>Lvl {xpInfo.level}</span>
+                    <span>{xpInfo.neededXp > 0 ? `${xpInfo.neededXp} XP to Lvl ${xpInfo.level + 1}` : 'Max Lvl'}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-theme rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-amber-500 to-primary rounded-full transition-all duration-500" 
+                      style={{ width: `${xpInfo.progress}%` }} 
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={onOpenLB}
+                  className="h-8 px-2.5 bg-card2 hover:bg-theme border border-theme rounded-xl text-[10px] font-bold text-text2 hover:text-text1 flex items-center gap-1 shrink-0 transition-all active:scale-95"
+                  title="Tazama Ubao wa Vinara"
+                >
+                  <Trophy size={12} className="text-amber-400" />
+                  <span className="hidden xs:inline">{lang === 'en' ? 'Rank' : 'Nafasi'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Quick Access Action Grid (Playground / Q&A / AI Tutor / Notes) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

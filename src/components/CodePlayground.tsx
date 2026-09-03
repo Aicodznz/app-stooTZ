@@ -19,68 +19,223 @@ import {
   FolderOpen,
   Zap,
   HelpCircle,
-  X
+  X,
+  Share2,
+  MessageSquarePlus,
+  Send
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PlaygroundSnippet, AIErrExplanation } from '../types';
 
-export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onClose?: () => void }> = ({ initialSnippet, onClose }) => {
-  const { lang, playgroundSnippets, savePlaygroundSnippet, explainCodeErrorWithAI, siteSettings } = useApp();
-  const appName = siteSettings?.siteName || 'Amourcodes';
-
-  const [activeLang, setActiveLang] = useState<'html' | 'javascript' | 'python'>('html');
-  const [code, setCode] = useState<string>(
-    initialSnippet?.html || initialSnippet?.javascript || initialSnippet?.python || `<!DOCTYPE html>
+const BUILT_IN_TEMPLATES = [
+  {
+    id: 'tmpl-card',
+    title: 'Modern Responsive Card (HTML/CSS)',
+    language: 'html' as const,
+    html: `<!DOCTYPE html>
 <html>
 <head>
   <style>
     body {
-      font-family: system-ui, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #090d16;
+      color: #f1f5f9;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background: #0f172a;
-      color: #f8fafc;
       margin: 0;
+      padding: 20px;
     }
-    .card {
-      background: #1e293b;
-      padding: 2rem;
-      border-radius: 1rem;
+    .profile-card {
+      background: #131b2e;
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 320px;
       text-align: center;
-      border: 1px solid #334155;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
     }
-    button {
-      background: #4f46e5;
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      border: 3px solid #312e81;
+    }
+    h3 { margin: 0 0 4px; font-size: 20px; }
+    p.title { color: #818cf8; font-size: 13px; font-weight: bold; margin-bottom: 12px; }
+    p.bio { color: #94a3b8; font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+    .btn {
+      background: #6366f1;
       color: white;
       border: none;
       padding: 10px 20px;
-      border-radius: 8px;
+      border-radius: 12px;
       font-weight: bold;
       cursor: pointer;
-      margin-top: 1rem;
+      width: 100%;
+      transition: all 0.2s;
     }
-    button:hover { background: #4338ca; }
+    .btn:hover { background: #4f46e5; transform: translateY(-2px); }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>🎉 Karibu Playground!</h2>
-    <p>Andika HTML, CSS, JavaScript au Python hapa uone matokeo papo hapo.</p>
-    <button onclick="badiliRangi()">Bonyeza Hapa</button>
+  <div class="profile-card">
+    <div class="avatar">👨‍💻</div>
+    <h3>Juma Nassor</h3>
+    <p class="title">Full-Stack Web Developer</p>
+    <p class="bio">Kujifunza uandishi wa kodi kwa vitendo na kujenga mifumo thabiti ya teknolojia Tanzania.</p>
+    <button class="btn" onclick="alert('Habari Juma!')">Wasiliana Nami</button>
   </div>
-
+</body>
+</html>`
+  },
+  {
+    id: 'tmpl-todo',
+    title: 'Interactive Todo App (HTML/JS)',
+    language: 'html' as const,
+    html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: white; padding: 20px; display: flex; justify-content: center; }
+    .todo-box { background: #1e293b; padding: 24px; border-radius: 16px; width: 100%; max-width: 360px; border: 1px solid #334155; }
+    input { width: 70%; padding: 10px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+    button.add { padding: 10px 14px; background: #10b981; border: none; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    ul { list-style: none; padding: 0; margin-top: 16px; }
+    li { background: #334155; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    button.del { background: #ef4444; border: none; color: white; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="todo-box">
+    <h3>Orodha ya Kazi 📝</h3>
+    <div style="display:flex; gap:8px;">
+      <input id="taskInput" placeholder="Kazi mpya..." />
+      <button class="add" onclick="addTask()">Ongeza</button>
+    </div>
+    <ul id="taskList">
+      <li><span>Jifunze Python</span> <button class="del" onclick="this.parentElement.remove()">Futa</button></li>
+      <li><span>Tengeneza Tovuti</span> <button class="del" onclick="this.parentElement.remove()">Futa</button></li>
+    </ul>
+  </div>
   <script>
-    function badiliRangi() {
-      const colors = ['#0f172a', '#1e1b4b', '#14532d', '#701a75', '#450a0a'];
-      const random = colors[Math.floor(Math.random() * colors.length)];
-      document.body.style.background = random;
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      if (!input.value.trim()) return;
+      const li = document.createElement('li');
+      li.innerHTML = '<span>' + input.value + '</span> <button class="del" onclick="this.parentElement.remove()">Futa</button>';
+      document.getElementById('taskList').appendChild(li);
+      input.value = '';
     }
   </script>
 </body>
 </html>`
+  },
+  {
+    id: 'tmpl-counter',
+    title: 'Interactive Counter & State (JS)',
+    language: 'html' as const,
+    html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: system-ui; background: #0b0f19; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .box { text-align: center; background: #1a2234; padding: 32px; border-radius: 20px; border: 1px solid #28354f; }
+    .count { font-size: 54px; font-weight: 900; color: #38bdf8; margin: 16px 0; }
+    .btn { padding: 12px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 0 4px; font-size: 16px; }
+    .btn-inc { background: #10b981; color: white; }
+    .btn-dec { background: #f43f5e; color: white; }
+    .btn-rst { background: #64748b; color: white; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Kaunta ya Kiswahili 🔢</h2>
+    <div id="display" class="count">0</div>
+    <div>
+      <button class="btn btn-dec" onclick="update(-1)">- Punguza</button>
+      <button class="btn btn-rst" onclick="reset()">Weka Upya</button>
+      <button class="btn btn-inc" onclick="update(1)">+ Ongeza</button>
+    </div>
+  </div>
+  <script>
+    let c = 0;
+    function update(v) {
+      c += v;
+      document.getElementById('display').innerText = c;
+    }
+    function reset() {
+      c = 0;
+      document.getElementById('display').innerText = 0;
+    }
+  </script>
+</body>
+</html>`
+  },
+  {
+    id: 'tmpl-py-tax',
+    title: 'Sales Tax & Currency Converter (Python)',
+    language: 'python' as const,
+    python: `# Kikokotoo cha Kodi na Pesa (Tanzania VAT & USD)
+bei_bila_kodi = 50000 # TZS
+vat_rate = 0.18 # 18% VAT ya Tanzania
+usd_exchange_rate = 2650 # 1 USD = 2650 TZS
+
+kodi_ya_vat = bei_bila_kodi * vat_rate
+jumla_kamili = bei_bila_kodi + kodi_ya_vat
+thamani_kwa_usd = jumla_kamili / usd_exchange_rate
+
+print("=== RISITI YA BIDHAA YA TEKNOLOJIA ===")
+print(f"Bei ya Asili: TZS {bei_bila_kodi:,.0f}")
+print(f"Kodi ya Ongezeko la Thamani (VAT 18%): TZS {kodi_ya_vat:,.0f}")
+print(f"Jumla ya Kulipwa: TZS {jumla_kamili:,.0f}")
+print(f"Thamani kwa Dola ya Kimarekani: $ {thamani_kwa_usd:.2f} USD")
+print("========================================")`
+  },
+  {
+    id: 'tmpl-py-grades',
+    title: 'Student Grade Evaluator (Python)',
+    language: 'python' as const,
+    python: `# Tathmini ya Matokeo ya Wanafunzi kwa Python
+alama_za_mwanafunzi = [85, 92, 78, 64, 88, 95]
+majina_ya_masomo = ["HTML/CSS", "JavaScript", "Python", "Databases", "Algorithms", "Git"]
+
+print("Ripoti ya Masomo:")
+jumla = sum(alama_za_mwanafunzi)
+wastani = jumla / len(alama_za_mwanafunzi)
+
+for somo, alama in zip(majina_ya_masomo, alama_za_mwanafunzi):
+    if alama >= 80:
+        daraja = "A (Bora Sana ⭐)"
+    elif alama >= 70:
+        daraja = "B (Nzuri Sana 👍)"
+    elif alama >= 60:
+        daraja = "C (Wastani Mwema)"
+    else:
+        daraja = "D (Inahitaji Mazoezi)"
+    print(f"- {somo}: {alama}% -> {daraja}")
+
+print("---------------------------------")
+print(f"Wastani Mkuu: {wastani:.1f}%")
+if wastani >= 75:
+    print("Hongera! Mwanafunzi amehitimu kwa Ufaulu wa Juu! 🎓")`
+  }
+];
+
+export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onClose?: () => void }> = ({ initialSnippet, onClose }) => {
+  const { lang, playgroundSnippets, savePlaygroundSnippet, explainCodeErrorWithAI, addQnAQuestion, siteSettings } = useApp();
+  const appName = siteSettings?.siteName || 'Amourcodes';
+
+  const [activeLang, setActiveLang] = useState<'html' | 'javascript' | 'python'>('html');
+  const [code, setCode] = useState<string>(
+    initialSnippet?.html || initialSnippet?.javascript || initialSnippet?.python || BUILT_IN_TEMPLATES[0].html
   );
 
   const [mobilePane, setMobilePane] = useState<'editor' | 'preview'>('editor');
@@ -95,6 +250,13 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<AIErrExplanation | null>(null);
   const [showAiModal, setShowAiModal] = useState(false);
+
+  // Share to Q&A State
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareTitle, setShareTitle] = useState('');
+  const [shareDetails, setShareDetails] = useState('');
+  const [shareSubmitting, setShareSubmitting] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -264,6 +426,27 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
     setShowTemplates(false);
   };
 
+  const handleShareToQnA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shareTitle.trim()) return;
+    setShareSubmitting(true);
+    await addQnAQuestion({
+      title: shareTitle.trim(),
+      details: shareDetails.trim() || 'Hapa kuna msimbo wangu kutoka Sandbox/Playground:',
+      codeSnippet: code
+    });
+    setShareSubmitting(false);
+    setShareSuccess(true);
+    setTimeout(() => {
+      setShareSuccess(false);
+      setShowShareModal(false);
+      setShareTitle('');
+      setShareDetails('');
+    }, 2000);
+  };
+
+  const allTemplates = [...BUILT_IN_TEMPLATES, ...playgroundSnippets.filter(s => !BUILT_IN_TEMPLATES.some(b => b.id === s.id))];
+
   return (
     <div className="space-y-4 max-w-6xl mx-auto pb-10 page-anim">
       {/* Top Action Bar */}
@@ -346,6 +529,18 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
             <span>{savedSuccess ? (lang === 'en' ? 'Saved!' : 'Imehifadhiwa!') : (lang === 'en' ? 'Save' : 'Hifadhi')}</span>
           </button>
 
+          <button
+            onClick={() => {
+              setShareTitle(`Swali kuhusu: ${snippetTitle}`);
+              setShowShareModal(true);
+            }}
+            className="h-9 px-3 bg-card2 hover:bg-card border border-theme text-text2 hover:text-text1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+            title="Tuma swali au msimbo huu kwenye Jukwaa la Q&A"
+          >
+            <Share2 size={14} className="text-primary" />
+            <span className="hidden sm:inline">{lang === 'en' ? 'Ask in Q&A' : 'Tuma Jukwaani'}</span>
+          </button>
+
           {onClose && (
             <button
               onClick={onClose}
@@ -365,7 +560,7 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
             <button onClick={() => setShowTemplates(false)} className="text-xs text-text3 hover:text-text1">Funga</button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {playgroundSnippets.map((tmpl) => (
+            {allTemplates.map((tmpl) => (
               <div
                 key={tmpl.id}
                 onClick={() => loadTemplate(tmpl)}
@@ -375,7 +570,7 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
                   <span className="text-xs font-bold text-text1">{tmpl.title}</span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-theme text-text3 uppercase">{tmpl.language}</span>
                 </div>
-                <p className="text-[11px] text-text3 line-clamp-2">{tmpl.desc || 'Mfano wa mafunzo.'}</p>
+                <p className="text-[11px] text-text3 line-clamp-2">{(tmpl as any).desc || 'Bonyeza kufungua msimbo huu kwenye mhariri.'}</p>
               </div>
             ))}
           </div>
@@ -589,6 +784,104 @@ export const CodePlayground: React.FC<{ initialSnippet?: PlaygroundSnippet; onCl
                 </div>
               </div>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Share to Q&A Forum Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg bg-card border border-theme rounded-3xl p-6 shadow-2xl space-y-4 text-text1">
+            <div className="flex items-center justify-between border-b border-theme pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                  <MessageSquarePlus size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-text1">
+                    {lang === 'en' ? 'Post Code to Q&A Forum' : 'Tuma Msimbo Kwenye Jukwaa la Q&A'}
+                  </h4>
+                  <p className="text-[11px] text-text3">
+                    {lang === 'en' ? 'Ask the community or mentors for help or feedback' : 'Uliza wanafunzi wenzako na walimu wakusaidie'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="p-1.5 rounded-xl hover:bg-card2 text-text3 hover:text-text1"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {shareSuccess ? (
+              <div className="p-6 text-center space-y-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                <CheckCircle2 size={36} className="text-emerald-500 mx-auto" />
+                <div className="text-sm font-bold text-emerald-400">
+                  {lang === 'en' ? 'Question posted successfully to Q&A forum!' : 'Swali lako limetumwa kikamilifu kwenye jukwaa!'}
+                </div>
+                <p className="text-xs text-text3">
+                  {lang === 'en' ? 'Community members can now review your code and answer.' : 'Wajumbe wa jukwaa wanaweza kusoma msimbo na kukujibu sasa.'}
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleShareToQnA} className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text2">
+                    {lang === 'en' ? 'Question Title' : 'Kichwa cha Swali'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={shareTitle}
+                    onChange={e => setShareTitle(e.target.value)}
+                    placeholder="mf. Kwa nini kaunta hii haiongezeki ninapobonyeza?"
+                    className="w-full h-11 px-3.5 bg-card2 border border-theme rounded-xl text-xs text-text1 focus:border-primary outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text2">
+                    {lang === 'en' ? 'Detailed Explanation' : 'Maelezo Zaidi / Nini Kinafanyika'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={shareDetails}
+                    onChange={e => setShareDetails(e.target.value)}
+                    placeholder="Eleza kwa kifupi tatizo unalokumbana nalo au nini ungependa kurekebishwa..."
+                    className="w-full p-3 bg-card2 border border-theme rounded-xl text-xs text-text1 focus:border-primary outline-none resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text3">Msimbo Utakaoambatanishwa ({activeLang}):</span>
+                    <span className="font-mono text-[10px] text-text3">{code.length} characters</span>
+                  </div>
+                  <pre className="p-2.5 bg-slate-950 border border-theme/60 rounded-xl font-mono text-[10px] text-slate-300 max-h-24 overflow-y-auto">
+                    {code.slice(0, 300)}...
+                  </pre>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowShareModal(false)}
+                    className="flex-1 h-11 bg-card2 hover:bg-theme border border-theme text-text2 font-bold rounded-xl text-xs"
+                  >
+                    Ghairi
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={shareSubmitting || !shareTitle.trim()}
+                    className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Send size={14} />
+                    <span>{shareSubmitting ? 'Inatuma...' : 'Tuma Jukwaani'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

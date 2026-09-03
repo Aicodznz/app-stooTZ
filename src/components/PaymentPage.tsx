@@ -492,20 +492,47 @@ export const PaymentPage: React.FC<{ onBack: () => void; onGoToLibrary?: () => v
         </summary>
         
         <form onSubmit={handleSubmit} className="space-y-3 pt-4 border-t border-theme mt-3">
-          <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-text3 tracking-wider">
-              {lang === 'en' ? 'Transaction Reference (SMS)' : 'Kumbukumbu ya Muamala (SMS)'}
-            </label>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase font-black text-text3 tracking-wider">
+                {lang === 'en' ? 'Transaction Reference (SMS)' : 'Kumbukumbu ya Muamala (SMS)'}
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) setRef(text.trim().toUpperCase());
+                  } catch (e) {}
+                }}
+                className="text-[10px] text-primary hover:underline font-bold"
+              >
+                {lang === 'en' ? 'Paste from Clipboard' : 'Bandika kutoka Clipboard'}
+              </button>
+            </div>
+
             <div className="relative">
               <QrCode className="absolute left-3.5 top-3.5 text-text3" size={16} />
               <input 
                 type="text" 
-                placeholder="Mfano: SKE992381JQA..."
+                placeholder="Mfano: 9JH823LA10 au TX-892341"
                 value={ref}
-                onChange={e => setRef(e.target.value)}
+                onChange={e => setRef(e.target.value.toUpperCase())}
                 className="w-full h-11 pl-10 pr-3 bg-card2 border border-theme rounded-xl outline-none focus:ring-2 focus:ring-primary/30 transition-all font-mono uppercase text-text1 text-xs font-bold"
               />
             </div>
+
+            {/* Live Format Helper */}
+            {ref.trim().length > 0 && (
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-medium pt-1">
+                <CheckCircle size={13} />
+                <span>
+                  {ref.length >= 8 
+                    ? (lang === 'en' ? 'Valid reference format detected' : 'Muundo wa kumbukumbu umekubalika') 
+                    : (lang === 'en' ? 'Entering code...' : 'Inasoma namba ya muamala...')}
+                </span>
+              </div>
+            )}
           </div>
 
           <button 

@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { X, Award, Share2, Download, CheckCircle2, ShieldCheck, QrCode, Sparkles, Printer } from 'lucide-react';
+import { X, Award, Share2, Download, CheckCircle2, ShieldCheck, QrCode, Sparkles, Printer, ExternalLink } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { jsPDF } from 'jspdf';
 
 export const CertificateOverlay: React.FC<{ title: string; score: number; onClose: () => void }> = ({ title, score, onClose }) => {
   const { profile, user, lang, siteSettings } = useApp();
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const studentName = profile?.name || user?.displayName || user?.email?.split('@')[0] || 'Mwanafunzi Bora';
   const serialNo = `TZ-${Math.floor(100000 + Math.random() * 900000)}`;
   const issueDate = new Date().toLocaleDateString('sw-TZ', { year: 'numeric', month: 'long', day: 'numeric' });
   const platformName = siteSettings?.siteName || 'Amourcodes';
+  const verificationUrl = `https://amourcodes.tz/verify/${serialNo.toLowerCase()}`;
 
   const downloadPDFCertificate = () => {
     setDownloading(true);
@@ -237,20 +240,43 @@ export const CertificateOverlay: React.FC<{ title: string; score: number; onClos
             </h4>
           </div>
 
-          <div className="inline-flex items-center gap-4 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700 text-xs">
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">{lang === 'en' ? 'Final Score' : 'Alama'}</span>
-              <span className="text-emerald-400 font-black text-sm">{score}%</span>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-800/80">
+            <div className="flex items-center gap-4 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">{lang === 'en' ? 'Final Score' : 'Alama'}</span>
+                <span className="text-emerald-400 font-black text-sm">{score}%</span>
+              </div>
+              <div className="w-px h-6 bg-slate-700" />
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">{lang === 'en' ? 'Issued Date' : 'Tarehe'}</span>
+                <span className="text-slate-200 font-bold">{issueDate}</span>
+              </div>
+              <div className="w-px h-6 bg-slate-700" />
+              <div className="flex items-center gap-1 text-emerald-400 font-bold">
+                <ShieldCheck size={14} />
+                <span>Verified</span>
+              </div>
             </div>
-            <div className="w-px h-6 bg-slate-700" />
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">{lang === 'en' ? 'Issued Date' : 'Tarehe'}</span>
-              <span className="text-slate-200 font-bold">{issueDate}</span>
-            </div>
-            <div className="w-px h-6 bg-slate-700" />
-            <div className="flex items-center gap-1 text-emerald-400 font-bold">
-              <ShieldCheck size={14} />
-              <span>Verified</span>
+
+            {/* QR Code Card */}
+            <div 
+              onClick={() => setShowVerifyModal(true)}
+              className="flex items-center gap-2.5 bg-white p-2 rounded-xl text-slate-950 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
+              title="Bonyeza kuhakiki cheti"
+            >
+              <QRCodeSVG 
+                value={verificationUrl}
+                size={44}
+                level="M"
+              />
+              <div className="text-left text-[10px] leading-tight pr-1">
+                <div className="font-black text-indigo-900 flex items-center gap-1">
+                  <span>SCAN QR</span>
+                  <ExternalLink size={9} />
+                </div>
+                <div className="text-slate-500 font-mono text-[9px]">{serialNo}</div>
+                <div className="text-emerald-700 font-bold text-[9px]">Hakiki Cheti</div>
+              </div>
             </div>
           </div>
         </div>
@@ -267,6 +293,14 @@ export const CertificateOverlay: React.FC<{ title: string; score: number; onClos
           </button>
 
           <button
+            onClick={() => setShowVerifyModal(true)}
+            className="w-full sm:w-auto h-12 px-4 bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-300 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <ShieldCheck size={16} className="text-emerald-400" />
+            <span>{lang === 'en' ? 'Verify Online' : 'Hakiki Cheti Mtandaoni'}</span>
+          </button>
+
+          <button
             onClick={handleShare}
             className="w-full sm:w-auto h-12 px-5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-all"
           >
@@ -275,6 +309,68 @@ export const CertificateOverlay: React.FC<{ title: string; score: number; onClos
           </button>
         </div>
       </div>
+
+      {/* Online Verification Modal */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 z-[300] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md bg-card border border-emerald-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-text1">
+            <div className="flex items-center justify-between border-b border-theme pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase text-emerald-500 tracking-wider">
+                    {lang === 'en' ? 'Official Verification' : 'Uhakiki Rasmi wa Cheti'}
+                  </h4>
+                  <p className="text-[10px] text-text3 font-mono">{serialNo}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowVerifyModal(false)} className="p-1 rounded-lg hover:bg-card2 text-text3">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3">
+              <CheckCircle2 size={24} className="text-emerald-500 shrink-0" />
+              <div className="text-xs">
+                <div className="font-bold text-emerald-400">CHETI KIMETHIBITISHWA NA NI HALALI</div>
+                <div className="text-[11px] text-text3">Kimerekodiwa kwenye hifadhidata ya {platformName}.</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs bg-card2 p-4 rounded-2xl border border-theme">
+              <div className="flex justify-between border-b border-theme/50 pb-1.5">
+                <span className="text-text3">{lang === 'en' ? 'Student Name:' : 'Jina la Mwanafunzi:'}</span>
+                <span className="font-bold text-text1">{studentName}</span>
+              </div>
+              <div className="flex justify-between border-b border-theme/50 pb-1.5">
+                <span className="text-text3">{lang === 'en' ? 'Course / Subject:' : 'Kozi / Mtihani:'}</span>
+                <span className="font-bold text-primary max-w-[200px] truncate text-right">{title}</span>
+              </div>
+              <div className="flex justify-between border-b border-theme/50 pb-1.5">
+                <span className="text-text3">{lang === 'en' ? 'Score & Grade:' : 'Alama & Daraja:'}</span>
+                <span className="font-bold text-emerald-400">{score}% ({score >= 90 ? 'Distinction' : score >= 75 ? 'Excellent' : 'Credit'})</span>
+              </div>
+              <div className="flex justify-between border-b border-theme/50 pb-1.5">
+                <span className="text-text3">{lang === 'en' ? 'Issue Date:' : 'Tarehe ya Kutolewa:'}</span>
+                <span className="font-mono text-text2">{issueDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text3">{lang === 'en' ? 'Issuer:' : 'Mamlaka:'}</span>
+                <span className="font-bold text-text2">Tanzania Code Academy</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowVerifyModal(false)}
+              className="w-full h-10 bg-primary text-white font-bold rounded-xl text-xs flex items-center justify-center transition-all"
+            >
+              {lang === 'en' ? 'Close Verification' : 'Funga Uhakiki'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
