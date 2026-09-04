@@ -1,6 +1,6 @@
 {
   "name": "Amourcodes",
-  "description": "Tanzania's #1 coding education platform. Learn, test, and grow with courses, quizzes, and live lectures.",
+  "description": "Tanzania's #1 coding education platform with interactive Code Studio, Android APK converter, courses, quizzes, and live lectures.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

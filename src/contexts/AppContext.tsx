@@ -122,6 +122,7 @@ interface AppContextType extends AppState {
   markAllNotificationsRead: () => void;
   deleteNotification: (id: string) => void;
   deleteAllNotifications: () => void;
+  restoreSeedNotifications: () => void;
   addNotification: (notification: Omit<AppNotification, 'id' | 'createdAt'>) => void;
   broadcastNotification: (notification: Omit<AppNotification, 'id' | 'createdAt'>) => Promise<boolean>;
   createOrder: (orderData: Omit<Order, 'id' | 'createdAt'>) => Promise<string>;
@@ -150,6 +151,9 @@ interface AppContextType extends AppState {
   // Bundles & Learning Paths
   buyBundle: (bundleId: string, paymentMethod?: string, phone?: string) => Promise<string>;
   updateBundles: (bundles: LearningBundle[]) => void;
+  addBundle: (bundle: Omit<LearningBundle, 'id' | 'createdAt'>) => void;
+  updateBundle: (id: string, bundle: Partial<LearningBundle>) => void;
+  deleteBundle: (id: string) => void;
   // Coupons & Promo Codes
   addCoupon: (coupon: Omit<Coupon, 'id' | 'createdAt' | 'usedCount'>) => void;
   updateCoupon: (id: string, data: Partial<Coupon>) => void;
@@ -223,7 +227,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     ],
     reviews: JSON.parse(localStorage.getItem('czp_reviews') || 'null') || SEED_REVIEWS,
-    notifications: JSON.parse(localStorage.getItem('czp_notifications') || 'null') || SEED_NOTIFICATIONS,
+    notifications: (() => {
+      try {
+        const stored = localStorage.getItem('czp_notifications');
+        if (stored !== null) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse czp_notifications', e);
+      }
+      return SEED_NOTIFICATIONS;
+    })(),
     discussions: JSON.parse(localStorage.getItem('czp_discussions') || 'null') || SEED_DISCUSSIONS,
     completedEpisodes: JSON.parse(localStorage.getItem('czp_completed_eps') || '{}'),
     cart: JSON.parse(localStorage.getItem('czp_c') || '[]'),
@@ -485,31 +500,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markNotificationRead = (id: string) => {
-    setState(p => ({
-      ...p,
-      notifications: p.notifications.map(n => n.id === id ? { ...n, read: true } : n)
-    }));
+    setState(p => {
+      const updated = p.notifications.map(n => n.id === id ? { ...n, read: !n.read } : n);
+      try {
+        localStorage.setItem('czp_notifications', JSON.stringify(updated));
+      } catch (e) {}
+      return {
+        ...p,
+        notifications: updated
+      };
+    });
   };
 
   const markAllNotificationsRead = () => {
-    setState(p => ({
-      ...p,
-      notifications: p.notifications.map(n => ({ ...n, read: true }))
-    }));
+    setState(p => {
+      const updated = p.notifications.map(n => ({ ...n, read: true }));
+      try {
+        localStorage.setItem('czp_notifications', JSON.stringify(updated));
+      } catch (e) {}
+      return {
+        ...p,
+        notifications: updated
+      };
+    });
   };
 
   const deleteNotification = (id: string) => {
-    setState(p => ({
-      ...p,
-      notifications: p.notifications.filter(n => n.id !== id)
-    }));
+    setState(p => {
+      const updated = p.notifications.filter(n => n.id !== id);
+      try {
+        localStorage.setItem('czp_notifications', JSON.stringify(updated));
+      } catch (e) {}
+      return {
+        ...p,
+        notifications: updated
+      };
+    });
   };
 
   const deleteAllNotifications = () => {
-    setState(p => ({
-      ...p,
-      notifications: []
-    }));
+    setState(p => {
+      try {
+        localStorage.setItem('czp_notifications', JSON.stringify([]));
+      } catch (e) {}
+      return {
+        ...p,
+        notifications: []
+      };
+    });
+  };
+
+  const restoreSeedNotifications = () => {
+    setState(p => {
+      try {
+        localStorage.setItem('czp_notifications', JSON.stringify(SEED_NOTIFICATIONS));
+      } catch (e) {}
+      return {
+        ...p,
+        notifications: SEED_NOTIFICATIONS
+      };
+    });
   };
 
   const addNotification = (notification: Omit<AppNotification, 'id' | 'createdAt'>) => {
@@ -1096,6 +1146,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const addBundle = (bundle: Omit<LearningBundle, 'id' | 'createdAt'>) => {
+    const newBundle: LearningBundle = {
+      ...bundle,
+      id: 'bnd-' + Date.now(),
+      createdAt: Date.now()
+    };
+    setState(p => {
+      const bundles = [newBundle, ...p.bundles];
+      localStorage.setItem('czp_bundles', JSON.stringify(bundles));
+      return { ...p, bundles };
+    });
+  };
+
+  const updateBundle = (id: string, bundleData: Partial<LearningBundle>) => {
+    setState(p => {
+      const bundles = p.bundles.map(b => b.id === id ? { ...b, ...bundleData } : b);
+      localStorage.setItem('czp_bundles', JSON.stringify(bundles));
+      return { ...p, bundles };
+    });
+  };
+
+  const deleteBundle = (id: string) => {
+    setState(p => {
+      const bundles = p.bundles.filter(b => b.id !== id);
+      localStorage.setItem('czp_bundles', JSON.stringify(bundles));
+      return { ...p, bundles };
+    });
+  };
+
   // --- 3. COUPONS & PROMOS ---
   const addCoupon = (coupon: Omit<Coupon, 'id' | 'createdAt' | 'usedCount'>) => {
     const newCoupon: Coupon = {
@@ -1598,6 +1677,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllNotificationsRead,
         deleteNotification,
         deleteAllNotifications,
+        restoreSeedNotifications,
         addNotification,
         broadcastNotification,
         createOrder,
@@ -1624,6 +1704,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteDeveloperPackage,
         buyBundle,
         updateBundles,
+        addBundle,
+        updateBundle,
+        deleteBundle,
         addCoupon,
         updateCoupon,
         deleteCoupon,

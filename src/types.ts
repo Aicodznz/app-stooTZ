@@ -124,6 +124,7 @@ export interface UserProfile {
   referralCount?: number;
   referralPointsEarned?: number;
   unlockedBadges?: string[];
+  walletBalance?: number;
 }
 
 export interface DeveloperPackage {
@@ -404,5 +405,85 @@ export interface AILessonSummary {
     front: string;
     back: string;
   }[];
+}
+
+// 7. APK & App Builder System (Wevlo Studio)
+export interface SandboxFile {
+  id: string;
+  name: string;
+  language: 'html' | 'css' | 'javascript' | 'python' | 'json';
+  content: string;
+  folder?: string;
+}
+
+export interface ApkBuildConfig {
+  appName: string;
+  packageName: string;
+  versionName: string;
+  versionCode: number;
+  appSource: 'projects' | 'url';
+  websiteUrl?: string;
+  selectedProject: string;
+  
+  // Icon & Branding
+  appIcon?: string;
+  appIconEmoji?: string;
+  appIconBg?: string;
+  splashScreenColor?: string;
+  statusBarColor: string;
+  
+  // Behavior
+  hideTitleBar: boolean;
+  loadingSpinner: boolean;
+  fullscreen: boolean;
+  exitConfirmation: boolean;
+  
+  // Interaction
+  pullToRefresh: boolean;
+  pinchZoom: boolean;
+  mediaAutoplay: boolean;
+  pcMode: boolean;
+  longPressMenu: boolean;
+  
+  // Permissions
+  cameraAccess: boolean;
+  microphone: boolean;
+  
+  // Appearance
+  darkModeSupport: boolean;
+  darkModeStatusBarColor?: string;
+  
+  // Pro Features
+  aes256Encryption: boolean;
+  pushNotificationsFCM: boolean;
+  pushNotificationPassword?: string;
+  admobAds: boolean;
+  bannerAdUnitId?: string;
+  interstitialAdUnitId?: string;
+  
+  // Share & Rate
+  shareMessage?: string;
+  shareLink?: string;
+  
+  // Advanced
+  customCss?: string;
+  customJs?: string;
+}
+
+export interface UserSubscriptionPlan {
+  planType: 'free' | 'gold' | 'platinum';
+  expiresAt: number; // timestamp
+  isActive: boolean;
+}
+
+export interface PushNotificationRecord {
+  id: string;
+  appId: string;
+  title: string;
+  message: string;
+  imageUrl?: string;
+  sentAt: number;
+  targetCount: number;
+  successCount: number;
 }
 

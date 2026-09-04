@@ -22,7 +22,8 @@ import {
   Flame,
   Radio,
   Clock,
-  Filter
+  Filter,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -36,6 +37,7 @@ export const NotificationsPage: React.FC<{
     markAllNotificationsRead, 
     deleteNotification, 
     deleteAllNotifications,
+    restoreSeedNotifications,
     siteSettings,
     lang 
   } = useApp();
@@ -53,6 +55,16 @@ export const NotificationsPage: React.FC<{
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(prev => prev === msg ? null : prev);
+    }, 2500);
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -138,6 +150,7 @@ export const NotificationsPage: React.FC<{
         {notifications.length > 0 && (
           <div className="flex items-center justify-between pt-2 border-t border-theme gap-2 flex-wrap">
             <button
+              type="button"
               onClick={markAllNotificationsRead}
               disabled={unreadCount === 0}
               className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-bg3 hover:bg-primary/10 text-text2 hover:text-primary text-[11px] font-bold border border-theme transition-all disabled:opacity-40 disabled:hover:bg-bg3 disabled:hover:text-text2"
@@ -147,12 +160,9 @@ export const NotificationsPage: React.FC<{
             </button>
 
             <button
-              onClick={() => {
-                if (confirm(lang === 'en' ? 'Are you sure you want to delete all notifications?' : 'Je, una uhakika unataka kufuta taarifa zote?')) {
-                  deleteAllNotifications();
-                }
-              }}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-bg3 hover:bg-err/10 text-text3 hover:text-err text-[11px] font-bold border border-theme transition-all"
+              type="button"
+              onClick={() => setShowClearAllModal(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-bg3 hover:bg-err/10 text-text3 hover:text-err text-[11px] font-bold border border-theme transition-all active:scale-95"
             >
               <Trash2 size={13} />
               <span>{lang === 'en' ? 'Clear all' : 'Futa Zote'}</span>
@@ -212,6 +222,19 @@ export const NotificationsPage: React.FC<{
                   : 'Taarifa mpya za masomo, ofa za punguzo na matangazo zitaonekana hapa zikitumwa.'}
               </p>
             </div>
+            {notifications.length === 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  restoreSeedNotifications();
+                  showToast(lang === 'en' ? 'Demo notifications restored!' : 'Taarifa za mfano zimerudishwa!');
+                }}
+                className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all border border-primary/20 shadow-xs active:scale-95"
+              >
+                <RotateCcw size={13} />
+                <span>{lang === 'en' ? 'Restore Demo Notifications' : 'Rejesha Taarifa za Mfano'}</span>
+              </button>
+            )}
           </div>
         ) : (
           filteredNotifications.map((notif) => {
@@ -337,12 +360,11 @@ export const NotificationsPage: React.FC<{
                   <div className="flex items-center gap-1">
                     {/* Toggle Read/Unread */}
                     <button
-                      onClick={() => {
-                        if (notif.read) {
-                          // mark unread logic by local state if needed
-                        } else {
-                          markNotificationRead(notif.id);
-                        }
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markNotificationRead(notif.id);
+                        showToast(notif.read ? (lang === 'en' ? 'Marked as unread' : 'Imewekwa haijasomwa') : (lang === 'en' ? 'Marked as read' : 'Imewekwa imesomwa'));
                       }}
                       className={cn(
                         "h-7 px-2.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all border",
@@ -358,18 +380,28 @@ export const NotificationsPage: React.FC<{
 
                     {/* Delete button */}
                     <button
-                      onClick={() => deleteNotification(notif.id)}
-                      className="h-7 px-2.5 rounded-lg text-[11px] font-bold flex items-center gap-1 text-text3 hover:text-err hover:bg-err/10 transition-all border border-transparent hover:border-err/20"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setItemToDeleteId(itemToDeleteId === notif.id ? null : notif.id);
+                      }}
+                      className={cn(
+                        "h-7 px-2.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all border",
+                        itemToDeleteId === notif.id
+                          ? "bg-err text-white border-err shadow-xs"
+                          : "text-text3 hover:text-err hover:bg-err/10 border-transparent hover:border-err/20"
+                      )}
                       title="Futa taarifa hii"
                     >
                       <Trash2 size={12} />
-                      <span>Futa</span>
+                      <span>{itemToDeleteId === notif.id ? (lang === 'en' ? 'Cancel' : 'Ghairi') : (lang === 'en' ? 'Delete' : 'Futa')}</span>
                     </button>
                   </div>
 
                   {/* Primary CTA Action Link */}
                   {(notif.actionUrl || notif.actionText) && (
                     <button
+                      type="button"
                       onClick={() => {
                         markNotificationRead(notif.id);
                         handleActionClick(notif.actionUrl);
@@ -381,11 +413,111 @@ export const NotificationsPage: React.FC<{
                     </button>
                   )}
                 </div>
+
+                {/* Inline Delete Confirmation for this specific item */}
+                {itemToDeleteId === notif.id && (
+                  <div className="mt-2.5 p-2.5 bg-err/10 border border-err/20 rounded-xl flex items-center justify-between gap-2 animate-in fade-in">
+                    <span className="text-[11px] font-bold text-err flex items-center gap-1.5">
+                      <AlertTriangle size={13} className="shrink-0" />
+                      <span>{lang === 'en' ? 'Delete this notification?' : 'Futa taarifa hii kabisa?'}</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemToDeleteId(null);
+                        }}
+                        className="h-6 px-2 text-[10px] font-bold bg-card border border-theme text-text2 hover:text-text1 rounded-lg"
+                      >
+                        {lang === 'en' ? 'Cancel' : 'Ghairi'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notif.id);
+                          setItemToDeleteId(null);
+                          showToast(lang === 'en' ? 'Notification deleted' : 'Taarifa imefutwa');
+                        }}
+                        className="h-6 px-2.5 text-[10px] font-bold bg-err hover:bg-err/90 text-white rounded-lg active:scale-95 transition-transform flex items-center gap-1 shadow-xs"
+                      >
+                        <Trash2 size={11} />
+                        <span>{lang === 'en' ? 'Yes, Delete' : 'Ndio, Futa'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })
         )}
       </div>
+
+      {/* Clear All Confirmation Modal */}
+      {showClearAllModal && (
+        <div 
+          onClick={() => setShowClearAllModal(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div 
+            onClick={e => e.stopPropagation()} 
+            className="relative max-w-sm w-full bg-card rounded-2xl p-5 border border-theme shadow-2xl space-y-4 animate-in zoom-in-95"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-err/10 text-err flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-text1">
+                  {lang === 'en' ? 'Clear all notifications?' : 'Futa Taarifa Zote?'}
+                </h4>
+                <p className="text-xs text-text3">
+                  {lang === 'en' 
+                    ? `${notifications.length} notification${notifications.length === 1 ? '' : 's'} will be removed.` 
+                    : `Taarifa zote ${notifications.length} zitaondolewa kabisa.`}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-text2 bg-bg3/60 p-3 rounded-xl border border-theme">
+              {lang === 'en' 
+                ? 'Are you sure you want to delete all notifications? You can restore demo notifications anytime.' 
+                : 'Je, una uhakika unataka kufuta taarifa zote? Unaweza kurudisha taarifa za mfano wakati wowote.'}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowClearAllModal(false)}
+                className="h-9 px-4 rounded-xl bg-bg3 hover:bg-bg2 text-text2 text-xs font-bold border border-theme transition-all"
+              >
+                {lang === 'en' ? 'Cancel' : 'Ghairi'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteAllNotifications();
+                  setShowClearAllModal(false);
+                  showToast(lang === 'en' ? 'All notifications cleared!' : 'Taarifa zote zimefutwa!');
+                }}
+                className="h-9 px-4 rounded-xl bg-err hover:bg-err/90 text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <Trash2 size={13} />
+                <span>{lang === 'en' ? 'Yes, Delete All' : 'Ndio, Futa Zote'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-text1 text-bg1 px-4 py-2.5 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2 border border-theme animate-in fade-in slide-in-from-bottom-3">
+          <Check size={14} className="text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Image Preview Modal */}
       {selectedImage && (

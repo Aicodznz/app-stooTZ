@@ -661,9 +661,9 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
 
       {/* Code Playground Modal */}
       {showPlayground && (
-        <div className="fixed inset-0 z-[250] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div className="fixed inset-0 z-[250] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
           <div className="absolute inset-0" onClick={() => setShowPlayground(false)} />
-          <div className="relative w-full max-w-5xl bg-[#0f172a] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl my-auto z-10 max-h-[92vh] overflow-y-auto">
+          <div className="relative w-full max-w-7xl bg-[#0f172a] border border-slate-800 rounded-3xl p-3 sm:p-6 shadow-2xl my-auto z-10 max-h-[96vh] overflow-y-auto">
             <CodePlayground onClose={() => setShowPlayground(false)} />
           </div>
         </div>

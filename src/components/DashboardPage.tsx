@@ -727,9 +727,9 @@ export const DashboardPage: React.FC<{ onNavigate: (page: any) => void; onOpenCo
 
       {/* Code Playground Modal */}
       {showPlayground && (
-        <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto page-anim">
-          <div className="absolute inset-0" onClick={() => setShowPlayground(false)} />
-          <div className="relative w-full max-w-5xl bg-card border border-theme rounded-3xl p-5 sm:p-6 shadow-2xl my-auto z-10 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[250] bg-slate-950 sm:bg-black/85 sm:backdrop-blur-md flex items-center justify-center p-0 sm:p-4 overflow-hidden page-anim">
+          <div className="absolute inset-0 hidden sm:block" onClick={() => setShowPlayground(false)} />
+          <div className="relative w-full h-full sm:h-[94vh] max-w-7xl bg-slate-950 sm:border sm:border-theme sm:rounded-3xl shadow-2xl z-10 flex flex-col overflow-hidden">
             <CodePlayground onClose={() => setShowPlayground(false)} />
           </div>
         </div>

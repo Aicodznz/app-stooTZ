@@ -56,7 +56,7 @@ import {
 } from 'lucide-react';
 import { DeveloperPanel } from './DeveloperPanel';
 import { cn, formatPrice, getInitials } from '../lib/utils';
-import { ContentItem, CodApp, Banner, Category } from '../types';
+import { ContentItem, CodApp, Banner, Category, LearningBundle } from '../types';
 import { addDoc, setDoc } from 'firebase/firestore';
 
 export const ContentTab: React.FC = () => {
@@ -2879,11 +2879,18 @@ export const CouponsAndBundlesTab: React.FC = () => {
     coupons, 
     bundles, 
     courses, 
+    tests,
+    lectures,
     addCoupon, 
     deleteCoupon, 
     updateBundles, 
+    addBundle,
+    updateBundle,
+    deleteBundle,
     lang 
   } = useApp();
+
+  const allItems = [...courses, ...tests, ...lectures];
 
   const [subTab, setSubTab] = useState<'coupons' | 'bundles'>('coupons');
   const [isAddingCoupon, setIsAddingCoupon] = useState(false);
@@ -2894,6 +2901,168 @@ export const CouponsAndBundlesTab: React.FC = () => {
   const [targetId, setTargetId] = useState('');
   const [maxUses, setMaxUses] = useState('100');
   const [expiryDays, setExpiryDays] = useState('30');
+
+  // --- BUNDLE MANAGEMENT STATE ---
+  const [isAddingBundle, setIsAddingBundle] = useState(false);
+  const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
+  const [bundleTitle, setBundleTitle] = useState('');
+  const [bundleDesc, setBundleDesc] = useState('');
+  const [bundleIcon, setBundleIcon] = useState('🎓');
+  const [bundleLevel, setBundleLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels'>('All Levels');
+  const [bundleDuration, setBundleDuration] = useState('30+ Masomo (Vyeti 2)');
+  const [bundlePrice, setBundlePrice] = useState('30000');
+  const [bundleOriginalPrice, setBundleOriginalPrice] = useState('50000');
+  const [bundleBadge, setBundleBadge] = useState('Inayopendwa Zaidi');
+  const [bundleSkills, setBundleSkills] = useState('HTML, CSS, JavaScript, React');
+  const [bundleCoverImg, setBundleCoverImg] = useState('');
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [itemSearch, setItemSearch] = useState('');
+  const [itemCategoryFilter, setItemCategoryFilter] = useState<'all' | 'courses' | 'tests' | 'lectures'>('all');
+  const [bundleDeleteConfirmId, setBundleDeleteConfirmId] = useState<string | null>(null);
+
+  const BUNDLE_PRESETS = [
+    {
+      title: 'Full Stack Web Developer Mastery Path',
+      icon: '🌐',
+      level: 'All Levels' as const,
+      duration: '45+ Masomo (Vyeti 2)',
+      price: '35000',
+      originalPrice: '55000',
+      badge: 'Inayopendwa Zaidi',
+      skills: 'HTML, CSS, JavaScript, React, Node.js, Git',
+      desc: 'Njia kamili ya kugeuka kuwa mhandisi wa programu kuanzia HTML/CSS, JavaScript, React hadi Node.js na mifumo ya kisasa.',
+      keywords: ['html', 'css', 'javascript', 'react', 'web', 'node']
+    },
+    {
+      title: 'Python, Data Science & AI Specialist Path',
+      icon: '🐍',
+      level: 'All Levels' as const,
+      duration: '35+ Masomo (Cheti 1)',
+      price: '30000',
+      originalPrice: '50000',
+      badge: 'Hot Deal',
+      skills: 'Python, Pandas, Machine Learning, AI, APIs',
+      desc: 'Jifunze lugha yenye soko kubwa duniani kwa uchambuzi wa data, uendeshaji wa mifumo na ujasusi mnemba (AI).',
+      keywords: ['python', 'data', 'ai', 'science', 'machine']
+    },
+    {
+      title: 'Mobile App Developer Path (Android & iOS)',
+      icon: '📱',
+      level: 'Intermediate' as const,
+      duration: '30+ Masomo (Cheti 1)',
+      price: '38000',
+      originalPrice: '60000',
+      badge: 'Ofa ya Wiki',
+      skills: 'Flutter, React Native, Firebase, App Store Deploy',
+      desc: 'Kuanzia mwanzo hadi kuchapisha program za simu kwenye Google Play Store na Apple App Store kwa ustadi.',
+      keywords: ['mobile', 'android', 'flutter', 'react native', 'app']
+    },
+    {
+      title: 'Backend & Cloud Systems Path',
+      icon: '⚡',
+      level: 'Advanced' as const,
+      duration: '40+ Masomo (Vyeti 2)',
+      price: '40000',
+      originalPrice: '65000',
+      badge: 'Kiwango cha Juu',
+      skills: 'Node.js, Docker, Linux, SQL, MongoDB, Cloud APIs',
+      desc: 'Jenga mifumo thabiti ya seva, hifadhidata za kisasa na miundombinu ya wingu (Cloud Architecture).',
+      keywords: ['backend', 'sql', 'database', 'node', 'api', 'cloud']
+    }
+  ];
+
+  const resetBundleForm = () => {
+    setEditingBundleId(null);
+    setBundleTitle('');
+    setBundleDesc('');
+    setBundleIcon('🎓');
+    setBundleLevel('All Levels');
+    setBundleDuration('30+ Masomo (Vyeti 2)');
+    setBundlePrice('30000');
+    setBundleOriginalPrice('50000');
+    setBundleBadge('');
+    setBundleSkills('');
+    setBundleCoverImg('');
+    setSelectedCourseIds([]);
+    setIsAddingBundle(false);
+    setBundleDeleteConfirmId(null);
+  };
+
+  const startEditBundle = (bundle: LearningBundle) => {
+    setEditingBundleId(bundle.id);
+    setBundleTitle(bundle.title);
+    setBundleDesc(bundle.desc);
+    setBundleIcon(bundle.icon);
+    setBundleLevel(bundle.level);
+    setBundleDuration(bundle.duration);
+    setBundlePrice(bundle.price.toString());
+    setBundleOriginalPrice(bundle.originalPrice.toString());
+    setBundleBadge(bundle.badge || '');
+    setBundleSkills(bundle.skills ? bundle.skills.join(', ') : '');
+    setBundleCoverImg(bundle.coverImg || '');
+    setSelectedCourseIds(bundle.courseIds || []);
+    setIsAddingBundle(true);
+  };
+
+  const handleAddOrUpdateBundle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bundleTitle.trim()) return;
+
+    const skillsArray = bundleSkills
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const bundlePayload = {
+      title: bundleTitle.trim(),
+      desc: bundleDesc.trim() || 'Mafunzo ya kina ya kukupa uzoefu halisi.',
+      icon: bundleIcon.trim() || '🎓',
+      coverImg: bundleCoverImg.trim() || undefined,
+      level: bundleLevel,
+      duration: bundleDuration.trim() || `${selectedCourseIds.length} Masomo`,
+      courseIds: selectedCourseIds.length > 0 ? selectedCourseIds : (courses[0] ? [courses[0].id] : []),
+      price: parseInt(bundlePrice) || 25000,
+      originalPrice: parseInt(bundleOriginalPrice) || 40000,
+      badge: bundleBadge.trim() || undefined,
+      skills: skillsArray.length > 0 ? skillsArray : ['Coding', 'Development']
+    };
+
+    if (editingBundleId) {
+      updateBundle(editingBundleId, bundlePayload);
+    } else {
+      addBundle(bundlePayload);
+    }
+
+    resetBundleForm();
+  };
+
+  const toggleCourseSelection = (id: string) => {
+    setSelectedCourseIds(prev => 
+      prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
+    );
+  };
+
+  const applyPreset = (preset: typeof BUNDLE_PRESETS[0]) => {
+    setBundleTitle(preset.title);
+    setBundleIcon(preset.icon);
+    setBundleLevel(preset.level);
+    setBundleDuration(preset.duration);
+    setBundlePrice(preset.price);
+    setBundleOriginalPrice(preset.originalPrice);
+    setBundleBadge(preset.badge);
+    setBundleSkills(preset.skills);
+    setBundleDesc(preset.desc);
+
+    const matched = allItems
+      .filter(item => preset.keywords.some(kw => 
+        item.title.toLowerCase().includes(kw.toLowerCase()) || 
+        (item.desc && item.desc.toLowerCase().includes(kw.toLowerCase()))
+      ))
+      .map(i => i.id);
+    if (matched.length > 0) {
+      setSelectedCourseIds(matched);
+    }
+  };
 
   const handleAddCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2913,6 +3082,25 @@ export const CouponsAndBundlesTab: React.FC = () => {
     setIsAddingCoupon(false);
     setCode('');
   };
+
+  // Filter items for bundle builder
+  const filteredItems = allItems.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(itemSearch.toLowerCase()) || 
+      (item.desc && item.desc.toLowerCase().includes(itemSearch.toLowerCase()));
+    if (!matchesSearch) return false;
+    if (itemCategoryFilter === 'courses') return courses.some(c => c.id === item.id);
+    if (itemCategoryFilter === 'tests') return tests.some(t => t.id === item.id);
+    if (itemCategoryFilter === 'lectures') return lectures.some(l => l.id === item.id);
+    return true;
+  });
+
+  const selectedItemsSum = allItems
+    .filter(item => selectedCourseIds.includes(item.id))
+    .reduce((sum, item) => sum + (item.price || 0), 0);
+
+  const priceNum = parseInt(bundlePrice) || 0;
+  const origPriceNum = parseInt(bundleOriginalPrice) || 0;
+  const discountPercent = origPriceNum > priceNum ? Math.round(((origPriceNum - priceNum) / origPriceNum) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -3092,34 +3280,516 @@ export const CouponsAndBundlesTab: React.FC = () => {
       )}
 
       {subTab === 'bundles' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="space-y-5">
+          {/* Header & Add Action */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-4 rounded-2xl border border-theme shadow-sm">
             <div>
-              <h3 className="text-sm font-black text-text1">Learning Bundles & Paths</h3>
-              <p className="text-xs text-text3">Mifumo iliyounganishwa ya masomo kadhaa kwa bei ya ofa</p>
+              <div className="flex items-center gap-2">
+                <Layers className="text-primary" size={18} />
+                <h3 className="text-sm font-black text-text1">Learning Bundles & Paths</h3>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {bundles.length} Zipo
+                </span>
+              </div>
+              <p className="text-xs text-text3 mt-0.5">
+                Mifumo iliyounganishwa ya masomo kadhaa kwa pamoja kwa bei ya ofa na vyeti vingi
+              </p>
             </div>
+            <button
+              onClick={() => {
+                if (isAddingBundle) {
+                  resetBundleForm();
+                } else {
+                  resetBundleForm();
+                  setIsAddingBundle(true);
+                }
+              }}
+              className="h-9 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-md shrink-0"
+            >
+              {isAddingBundle ? <X size={14} /> : <Plus size={14} />}
+              <span>{isAddingBundle ? (lang === 'en' ? 'Close Form' : 'Funga Fomu') : (lang === 'en' ? 'Add Learning Bundle' : 'Ongeza Bundle Mpya')}</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bundles.map(bundle => (
-              <div key={bundle.id} className="bg-card border border-theme rounded-2xl p-4 shadow-sm space-y-2.5">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-bg3 text-xl flex items-center justify-center shrink-0">
-                    {bundle.icon}
+          {/* Bundle Creator / Editor Form */}
+          {isAddingBundle && (
+            <form onSubmit={handleAddOrUpdateBundle} className="bg-card border-2 border-primary/30 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between border-b border-theme pb-3">
+                <div>
+                  <h4 className="text-sm font-black text-primary flex items-center gap-2">
+                    <Sparkles size={16} />
+                    <span>{editingBundleId ? 'Hariri Njia/Bundle ya Mafunzo' : 'Tengeneza Njia/Bundle Mpya ya Mafunzo'}</span>
+                  </h4>
+                  <p className="text-[11px] text-text3">Unganisha masomo kadhaa, weka bei ya ofa, na ujuzi watakaopata wanafunzi</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetBundleForm}
+                  className="p-1.5 text-text3 hover:text-text1 hover:bg-card2 rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Quick Preset Templates */}
+              {!editingBundleId && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-text2 uppercase tracking-wide flex items-center gap-1">
+                    <span>⚡ Chagua Mfano wa Haraka (Quick Templates):</span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {BUNDLE_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => applyPreset(preset)}
+                        className="text-left p-2.5 rounded-xl border border-theme bg-card2 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                      >
+                        <div className="text-base mb-1">{preset.icon}</div>
+                        <div className="text-xs font-bold text-text1 group-hover:text-primary line-clamp-1">{preset.title}</div>
+                        <div className="text-[10px] text-primary font-bold">{formatPrice(parseInt(preset.price))}</div>
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-black text-xs text-text1">{bundle.title}</h4>
-                    <div className="text-xs text-primary font-black">
-                      {formatPrice(bundle.price)} <span className="text-[10px] text-text3 line-through">{formatPrice(bundle.originalPrice)}</span>
+                </div>
+              )}
+
+              {/* Basic Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-bold text-text2 block mb-1">
+                    Jina la Njia / Bundle <span className="text-err">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Mfano: Full Stack Web Developer Mastery Path"
+                    value={bundleTitle}
+                    onChange={(e) => setBundleTitle(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Alama / Emoji</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={bundleIcon}
+                      onChange={(e) => setBundleIcon(e.target.value)}
+                      className="w-14 h-9 text-center text-base bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                    />
+                    <div className="flex gap-1 overflow-x-auto py-1">
+                      {['🌐', '🐍', '📱', '🚀', '⚡', '🔒', '🎨', '🤖'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => setBundleIcon(emoji)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-card2 hover:bg-card border border-theme text-xs"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-text3">{bundle.desc}</p>
-                <div className="text-[11px] text-text2 bg-card2 p-2 rounded-xl border border-theme">
-                  Inajumuisha masomo {bundle.courseIds.length}: {bundle.courseIds.join(', ')}
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Kiwango (Level)</label>
+                  <select
+                    value={bundleLevel}
+                    onChange={(e) => setBundleLevel(e.target.value as any)}
+                    className="w-full h-9 px-2 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  >
+                    <option value="All Levels">Ngazi Zote (All Levels)</option>
+                    <option value="Beginner">Waanzilishi (Beginner)</option>
+                    <option value="Intermediate">Wastani (Intermediate)</option>
+                    <option value="Advanced">Wabobezi (Advanced)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Muda & Vyeti (Duration)</label>
+                  <input
+                    type="text"
+                    placeholder="Mfano: 45+ Masomo (Vyeti 2)"
+                    value={bundleDuration}
+                    onChange={(e) => setBundleDuration(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">
+                    Bei ya Ofa (TSh) <span className="text-err">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="35000"
+                    value={bundlePrice}
+                    onChange={(e) => setBundlePrice(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">
+                    Bei ya Awali (TSh)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="55000"
+                      value={bundleOriginalPrice}
+                      onChange={(e) => setBundleOriginalPrice(e.target.value)}
+                      className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                    />
+                    {discountPercent > 0 && (
+                      <span className="absolute right-2 top-2 text-[10px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-md">
+                        -{discountPercent}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Lebo Maalumu (Badge)</label>
+                  <input
+                    type="text"
+                    placeholder="Mfano: Inayopendwa Zaidi au Hot Deal"
+                    value={bundleBadge}
+                    onChange={(e) => setBundleBadge(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                  />
                 </div>
               </div>
-            ))}
+
+              {/* Description & Skills */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-text2 block mb-1">Maelezo ya Njia/Bundle</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Maelezo mafupi yanayoelezea lengo na manufaa ya njia hii..."
+                    value={bundleDesc}
+                    onChange={(e) => setBundleDesc(e.target.value)}
+                    className="w-full p-2.5 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-[11px] font-bold text-text2 block mb-1">Ujuzi Watakaopata (Tenganisha kwa koma)</label>
+                    <input
+                      type="text"
+                      placeholder="HTML, CSS, JavaScript, React, Node.js"
+                      value={bundleSkills}
+                      onChange={(e) => setBundleSkills(e.target.value)}
+                      className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-text2 block mb-1">Picha ya Jalada (Cover Image URL - Hiari)</label>
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/..."
+                      value={bundleCoverImg}
+                      onChange={(e) => setBundleCoverImg(e.target.value)}
+                      className="w-full h-9 px-3 text-xs bg-card2 border border-theme rounded-xl text-text1 outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Course Selection Section */}
+              <div className="border border-theme rounded-xl p-3.5 bg-card2/50 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-black text-text1 flex items-center gap-1.5">
+                      <BookOpen size={14} className="text-primary" />
+                      <span>Masomo Yaliyojumuishwa Kwenye Bundle ({selectedCourseIds.length} Yamechaguliwa)</span>
+                    </label>
+                    <p className="text-[11px] text-text3">
+                      Mwanafunzi akinunua bundle hii atapata ufikiaji wa masomo yote yaliyotiwa alama ya vema
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCourseIds(allItems.map(i => i.id))}
+                      className="text-[11px] font-bold text-primary hover:underline px-2 py-1"
+                    >
+                      Chagua Yote
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCourseIds([])}
+                      className="text-[11px] font-bold text-text3 hover:text-err px-2 py-1"
+                    >
+                      Ondoa Yote
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter and Search */}
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="relative flex-1 w-full">
+                    <Search size={13} className="absolute left-2.5 top-2.5 text-text3" />
+                    <input
+                      type="text"
+                      placeholder="Tafuta somo kwa jina..."
+                      value={itemSearch}
+                      onChange={(e) => setItemSearch(e.target.value)}
+                      className="w-full h-8 pl-8 pr-3 text-xs bg-card border border-theme rounded-lg text-text1 outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 w-full sm:w-auto">
+                    {(['all', 'courses', 'tests', 'lectures'] as const).map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setItemCategoryFilter(cat)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize transition-all ${
+                          itemCategoryFilter === cat
+                            ? 'bg-primary text-white'
+                            : 'bg-card text-text3 hover:text-text1 border border-theme'
+                        }`}
+                      >
+                        {cat === 'all' ? 'Zote' : cat === 'courses' ? 'Kozi' : cat === 'tests' ? 'Mitihani' : 'Mihadhara'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Combined Value Info */}
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-text2">
+                    Thamani kamili (ukinunua moja moja):{' '}
+                    <span className="font-bold text-text1">{formatPrice(selectedItemsSum)}</span>
+                  </div>
+                  <div className="text-primary font-bold">
+                    Bei ya Bundle: {formatPrice(priceNum)}
+                    {selectedItemsSum > priceNum && (
+                      <span className="ml-1.5 text-ok font-black">
+                        (Mwanafunzi anaokoa {formatPrice(selectedItemsSum - priceNum)})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Items Selector Grid */}
+                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                  {filteredItems.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-text3">Hakuna somo linalolingana na utafutaji wako</div>
+                  ) : (
+                    filteredItems.map(item => {
+                      const isSelected = selectedCourseIds.includes(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => toggleCourseSelection(item.id)}
+                          className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary/10 border-primary shadow-sm text-text1'
+                              : 'bg-card border-theme hover:border-primary/40 text-text2'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center border shrink-0 transition-colors ${
+                              isSelected ? 'bg-primary border-primary text-white' : 'border-theme bg-card2'
+                            }`}>
+                              {isSelected && <Check size={12} />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-text1 truncate">{item.title}</div>
+                              <div className="text-[10px] text-text3">
+                                {courses.some(c => c.id === item.id) ? 'Kozi' : tests.some(t => t.id === item.id) ? 'Mtihani' : 'Mhadhara'} • ID: {item.id}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs font-bold text-primary font-mono shrink-0 ml-2">
+                            {formatPrice(item.price)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Form Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-theme">
+                <button
+                  type="button"
+                  onClick={resetBundleForm}
+                  className="h-9 px-4 bg-card2 hover:bg-card border border-theme text-text2 rounded-xl text-xs font-bold transition-all"
+                >
+                  Ghairi
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 px-5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-md"
+                >
+                  <Check size={14} />
+                  <span>{editingBundleId ? 'Hifadhi Mabadiliko' : 'Hifadhi Njia/Bundle Mpya'}</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Bundles Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bundles.length === 0 ? (
+              <div className="col-span-full text-center py-12 bg-card border border-theme rounded-2xl">
+                <Layers size={36} className="mx-auto text-text3 mb-2 opacity-50" />
+                <h4 className="text-sm font-bold text-text1">Hakuna Learning Bundles Bado</h4>
+                <p className="text-xs text-text3 mt-1 mb-4">Bonyeza kitufe hapo juu kuunda njia yako ya kwanza ya mafunzo</p>
+                <button
+                  onClick={() => setIsAddingBundle(true)}
+                  className="h-9 px-4 bg-primary text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <Plus size={14} />
+                  <span>Ongeza Bundle ya Kwanza</span>
+                </button>
+              </div>
+            ) : (
+              bundles.map(bundle => {
+                const bundleCourses = allItems.filter(item => bundle.courseIds.includes(item.id));
+                const discount = bundle.originalPrice > bundle.price 
+                  ? Math.round(((bundle.originalPrice - bundle.price) / bundle.originalPrice) * 100)
+                  : 0;
+
+                return (
+                  <div key={bundle.id} className="bg-card border border-theme rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 relative flex flex-col justify-between hover:border-primary/40 transition-all">
+                    <div className="space-y-2.5">
+                      {/* Top bar with Icon, Title, and Actions */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-xl bg-card2 border border-theme text-2xl flex items-center justify-center shrink-0 shadow-inner">
+                            {bundle.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                              {bundle.badge && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                  {bundle.badge}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-card2 text-text3 border border-theme">
+                                {bundle.level}
+                              </span>
+                            </div>
+                            <h4 className="font-black text-sm text-text1 leading-snug line-clamp-2">{bundle.title}</h4>
+                          </div>
+                        </div>
+
+                        {/* Edit and Delete Buttons */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => startEditBundle(bundle)}
+                            title="Hariri Bundle"
+                            className="p-1.5 text-text3 hover:text-primary hover:bg-card2 rounded-lg transition-colors"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                          <button
+                            onClick={() => setBundleDeleteConfirmId(bundle.id)}
+                            title="Futa Bundle"
+                            className="p-1.5 text-text3 hover:text-err hover:bg-card2 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Pricing Bar */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-primary font-mono">
+                          {formatPrice(bundle.price)}
+                        </span>
+                        {bundle.originalPrice > bundle.price && (
+                          <span className="text-xs text-text3 line-through font-mono">
+                            {formatPrice(bundle.originalPrice)}
+                          </span>
+                        )}
+                        {discount > 0 && (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-ok/10 text-ok border border-ok/20">
+                            -{discount}%
+                          </span>
+                        )}
+                        <span className="text-[11px] text-text3 ml-auto font-medium">
+                          {bundle.duration}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs text-text3 line-clamp-2">{bundle.desc}</p>
+
+                      {/* Included Items with Titles */}
+                      <div className="text-[11px] text-text2 bg-card2 p-2.5 rounded-xl border border-theme space-y-1.5">
+                        <div className="font-bold text-text1 flex items-center justify-between">
+                          <span>Inajumuisha Masomo ({bundleCourses.length || bundle.courseIds.length}):</span>
+                          <span className="text-[10px] text-primary font-bold">
+                            Thamani: {formatPrice(bundleCourses.reduce((sum, item) => sum + (item.price || 0), 0))}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {bundleCourses.length > 0 ? (
+                            bundleCourses.map(item => (
+                              <span key={item.id} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-card border border-theme text-text2">
+                                {item.title}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[10px] text-text3">
+                              {bundle.courseIds.join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Skills tags */}
+                      {bundle.skills && bundle.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {bundle.skills.map((skill, i) => (
+                            <span key={i} className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-primary/5 text-primary/80 border border-primary/10">
+                              #{skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Delete Confirmation Popup */}
+                    {bundleDeleteConfirmId === bundle.id && (
+                      <div className="mt-3 p-3 bg-err/10 border border-err/30 rounded-xl space-y-2 animate-in fade-in">
+                        <div className="text-xs font-bold text-err">
+                          Je, una uhakika unataka kufuta njia/bundle hii?
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setBundleDeleteConfirmId(null)}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-card border border-theme rounded-lg text-text2"
+                          >
+                            Ghairi
+                          </button>
+                          <button
+                            onClick={() => {
+                              deleteBundle(bundle.id);
+                              setBundleDeleteConfirmId(null);
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-err text-white rounded-lg active:scale-95 transition-transform"
+                          >
+                            Ndio, Futa
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}
