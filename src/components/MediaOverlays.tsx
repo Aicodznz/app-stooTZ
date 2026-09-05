@@ -25,12 +25,38 @@ import {
   Code2,
   Bot,
   Award,
-  Zap
+  Zap,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
 import { CodePlayground } from './CodePlayground';
 import { AIAssistantModal } from './AIAssistantModal';
+
+// Helper to reliably parse YouTube video ID and provide embed, direct URL & thumbnail
+function parseYouTubeVideo(url: string) {
+  if (!url) return { embedUrl: '', directUrl: '', videoId: '', thumbUrl: '' };
+  let videoId = '';
+  if (url.includes('embed/')) {
+    videoId = url.split('embed/')[1]?.split('?')[0] || '';
+  } else if (url.includes('v=')) {
+    videoId = url.split('v=')[1]?.split('&')[0] || '';
+  } else if (url.includes('youtu.be/')) {
+    videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+  }
+
+  const embedUrl = videoId 
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`
+    : url;
+  const directUrl = videoId
+    ? `https://www.youtube.com/watch?v=${videoId}`
+    : url;
+  const thumbUrl = videoId
+    ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+    : '';
+
+  return { embedUrl, directUrl, videoId, thumbUrl };
+}
 
 export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => void }> = ({ item, onClose }) => {
   const { completedEpisodes, toggleEpisodeComplete, discussions, addDiscussionReply, addDiscussionQuestion, isAdm, user, lang, reviews, addReview, summarizeLessonWithAI, addPoints } = useApp();
@@ -55,6 +81,7 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
 
   const episodes = item.episodes || [];
   const currEp = episodes[currIdx];
+  const videoInfo = parseYouTubeVideo(currEp?.url || '');
 
   // Calculate completed count
   const completedCount = episodes.filter((_, idx) => completedEpisodes[`${item.id}_${idx}`]).length;
@@ -131,96 +158,149 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
   };
 
   return (
-    <div className="fixed inset-0 z-[150] bg-[#070710] flex flex-col page-anim text-white select-none">
+    <div className="fixed inset-0 z-[150] bg-[#080b14] flex flex-col page-anim text-slate-100 select-none">
       {/* XP Bonus Toast */}
       {showXpAlert && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[200] bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs animate-bounce">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[200] bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs animate-bounce border border-amber-300/40">
           <Zap size={16} fill="currentColor" />
           <span>{lang === 'en' ? 'Lesson Completed! +15 XP Earned 🔥' : 'Somo Limekamilika! +15 XP Umejipatia 🔥'}</span>
         </div>
       )}
 
       {/* Top Bar */}
-      <header className="h-14 flex items-center px-4 justify-between bg-black/70 backdrop-blur-md border-b border-white/10 shrink-0">
-        <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-transform">
-          <ChevronLeft size={24} />
+      <header className="h-14 flex items-center px-3 sm:px-4 justify-between bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 shrink-0">
+        <button 
+          onClick={onClose} 
+          className="p-2 -ml-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 active:scale-95 transition-all"
+          title="Funga / Rudi"
+        >
+          <ChevronLeft size={22} />
         </button>
-        <div className="text-center truncate px-2">
-          <h2 className="font-bold text-xs sm:text-sm truncate max-w-[200px] sm:max-w-[280px]">{item.title}</h2>
-          <div className="text-[10px] text-white/50">{completedCount}/{episodes.length} {lang === 'en' ? 'Episodes Completed' : 'Masomo Yamekamilika'} ({progress}%)</div>
+
+        <div className="text-center truncate px-2 min-w-0 flex-1">
+          <h2 className="font-bold text-xs sm:text-sm text-white truncate max-w-[220px] sm:max-w-[340px] mx-auto">
+            {item.title}
+          </h2>
+          <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1.5 mt-0.5">
+            <span className="font-mono text-indigo-400 font-semibold">{completedCount}/{episodes.length}</span>
+            <span>{lang === 'en' ? 'Lessons Done' : 'Masomo Yamekamilika'}</span>
+            <span className="text-slate-600">•</span>
+            <span className="font-mono text-emerald-400 font-semibold">{progress}%</span>
+          </div>
         </div>
+
         <div className="flex items-center gap-1">
           <button 
             onClick={() => setActiveTab(activeTab === 'qa' ? 'playlist' : 'qa')}
-            className={cn("p-2 rounded-full transition-colors relative", activeTab === 'qa' ? "bg-primary text-white" : "hover:bg-white/10 text-white/80")}
+            className={cn(
+              "h-8 px-2.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border",
+              activeTab === 'qa' 
+                ? "bg-indigo-600 text-white border-indigo-500" 
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800"
+            )}
             title="Maswali & Majibu"
           >
-            <MessageSquare size={18} />
+            <MessageSquare size={14} />
+            <span className="hidden sm:inline">Q&A</span>
             {itemDiscussions.length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] px-1 py-0.2 rounded-full bg-indigo-500/30 text-indigo-300 font-mono">
+                {itemDiscussions.length}
+              </span>
             )}
           </button>
         </div>
       </header>
 
       {/* Video Container */}
-      <div className="aspect-video w-full bg-black relative shrink-0 shadow-2xl border-b border-white/5">
+      <div className="aspect-video w-full bg-slate-950 relative shrink-0 shadow-2xl border-b border-slate-800/80 group">
         {currEp ? (
-          <iframe 
-            src={`${currEp.url}?autoplay=1&rel=0&modestbranding=1`}
-            className="w-full h-full"
-            allow="autoplay; encrypted-media; fullscreen"
-            allowFullScreen
-            title={currEp.title}
-          />
+          <>
+            <iframe 
+              key={currEp.url}
+              src={`${videoInfo.embedUrl}${videoInfo.embedUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1&enablejsapi=1`}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              title={currEp.title}
+            />
+
+            {/* Direct Open in YouTube Quick-Action in corner if iframe blocked */}
+            {videoInfo.directUrl && (
+              <a
+                href={videoInfo.directUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="absolute top-2.5 right-2.5 z-20 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 opacity-90 hover:opacity-100 transition-all shadow-lg"
+                title="Fungua video moja kwa moja kwenye YouTube"
+              >
+                <ExternalLink size={12} className="text-indigo-400" />
+                <span>YouTube</span>
+              </a>
+            )}
+          </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/30 text-sm">Hakuna URL ya Video</div>
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-xs gap-2">
+            <Play size={28} className="text-slate-600" />
+            <span>Hakuna URL ya Video</span>
+          </div>
         )}
       </div>
 
-      {/* Progress Bar under video */}
-      <div className="w-full h-1 bg-white/10">
-        <div className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500" style={{ width: `${progress}%` }} />
+      {/* Course Progress Indicator Bar */}
+      <div className="w-full h-1 bg-slate-900 overflow-hidden">
+        <div 
+          className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 transition-all duration-500" 
+          style={{ width: `${progress}%` }} 
+        />
       </div>
 
-      {/* Smart Video Controls Strip: Next/Prev & Speed Controls */}
-      <div className="bg-black/60 border-b border-white/10 px-3 py-2 flex items-center justify-between gap-2 shrink-0 flex-wrap text-xs">
+      {/* Sleek, Single-Row Player Control Strip (Clean & Uncluttered) */}
+      <div className="bg-slate-950/95 border-b border-slate-800/80 px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+        {/* Left: Previous & Next Lesson navigation */}
         <div className="flex items-center gap-1.5">
           <button
             onClick={handlePrevEpisode}
             disabled={currIdx === 0}
-            className="h-7 px-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all"
+            className="h-8 px-2.5 sm:px-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-colors"
             title="Somo Lililopita"
           >
-            <SkipBack size={12} />
+            <SkipBack size={13} />
             <span className="hidden sm:inline">{lang === 'en' ? 'Prev' : 'Nyuma'}</span>
           </button>
 
           <button
             onClick={handleNextEpisode}
             className={cn(
-              "h-7 px-3 rounded-lg text-[11px] font-black flex items-center gap-1 shadow-sm transition-all",
+              "h-8 px-3 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs",
               currIdx === episodes.length - 1
-                ? "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                : "bg-primary hover:bg-primary/90 text-white"
+                ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
             )}
             title="Somo Linalofuata"
           >
-            <span>{currIdx === episodes.length - 1 ? (lang === 'en' ? 'Finish Course 🎉' : 'Kamilisha Kozi 🎉') : (lang === 'en' ? 'Next Lesson' : 'Somo Linalofuata')}</span>
-            <SkipForward size={12} />
+            <span>
+              {currIdx === episodes.length - 1 
+                ? (lang === 'en' ? 'Finish Course 🎉' : 'Kamilisha Kozi 🎉') 
+                : (lang === 'en' ? 'Next Lesson' : 'Somo Linalofuata')}
+            </span>
+            <SkipForward size={13} />
           </button>
         </div>
 
-        {/* Speed Selector & Auto-Advance */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-white/10 rounded-lg p-0.5">
+        {/* Right: Playback Speed & Auto-Advance */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Segmented Speed Selector */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
             {[0.75, 1.0, 1.25, 1.5].map((speed) => (
               <button
                 key={speed}
                 onClick={() => setPlaybackSpeed(speed)}
                 className={cn(
-                  "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
-                  playbackSpeed === speed ? "bg-primary text-white" : "text-white/60 hover:text-white"
+                  "px-1.5 sm:px-2 py-0.5 rounded text-[11px] font-semibold transition-all",
+                  playbackSpeed === speed 
+                    ? "bg-slate-800 text-white font-bold shadow-xs" 
+                    : "text-slate-400 hover:text-slate-200"
                 )}
               >
                 {speed}x
@@ -228,56 +308,78 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
             ))}
           </div>
 
+          {/* Auto-Advance Toggle */}
           <button
             onClick={() => setAutoAdvance(!autoAdvance)}
             className={cn(
-              "px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all",
-              autoAdvance ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-white/50"
+              "h-7 px-2 rounded-lg text-[11px] font-semibold flex items-center gap-1 border transition-all",
+              autoAdvance 
+                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" 
+                : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200"
             )}
+            title="Endesha somo linalofuata kiotomatiki"
           >
-            <Zap size={10} />
-            <span className="hidden sm:inline">Auto-Next</span>
+            <Zap size={11} className={autoAdvance ? "fill-emerald-400 text-emerald-400" : ""} />
+            <span className="hidden sm:inline">Auto</span>
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-white/10 bg-black/40 px-4 shrink-0 overflow-x-auto scrollbar-none">
+      {/* Tabs Bar: Clean, Un-truncated labels & consistent badge styling */}
+      <div className="flex border-b border-slate-800/80 bg-slate-950 px-3 sm:px-4 shrink-0 overflow-x-auto no-scrollbar gap-1">
         <button
           onClick={() => setActiveTab('playlist')}
           className={cn(
-            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap",
-            activeTab === 'playlist' ? "border-primary text-white" : "border-transparent text-white/50 hover:text-white/80"
+            "py-2.5 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
+            activeTab === 'playlist' 
+              ? "border-indigo-500 text-white" 
+              : "border-transparent text-slate-400 hover:text-slate-200"
           )}
         >
-          {lang === 'en' ? 'Playlist' : 'Orodha ya Masomo'} ({episodes.length})
+          <span>{lang === 'en' ? 'Playlist' : 'Masomo'}</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300">
+            {episodes.length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('qa')}
           className={cn(
-            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
-            activeTab === 'qa' ? "border-primary text-white" : "border-transparent text-white/50 hover:text-white/80"
+            "py-2.5 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
+            activeTab === 'qa' 
+              ? "border-indigo-500 text-white" 
+              : "border-transparent text-slate-400 hover:text-slate-200"
           )}
         >
           <span>Q&A</span>
-          <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full">{itemDiscussions.length}</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300">
+            {itemDiscussions.length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('reviews')}
           className={cn(
-            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
-            activeTab === 'reviews' ? "border-amber-400 text-amber-300" : "border-transparent text-white/50 hover:text-white/80"
+            "py-2.5 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
+            activeTab === 'reviews' 
+              ? "border-amber-400 text-amber-300" 
+              : "border-transparent text-slate-400 hover:text-slate-200"
           )}
         >
           <Star size={12} className="text-amber-400" fill="currentColor" />
-          <span>{lang === 'en' ? 'Reviews' : 'Maoni & Nyota'}</span>
-          <span className="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded-full">{avgRating} ★</span>
+          <span>{lang === 'en' ? 'Reviews' : 'Maoni'}</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300">
+            {avgRating} ★
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('notes')}
           className={cn(
-            "py-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
-            activeTab === 'notes' ? "border-primary text-white" : "border-transparent text-white/50 hover:text-white/80"
+            "py-2.5 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap",
+            activeTab === 'notes' 
+              ? "border-indigo-500 text-white" 
+              : "border-transparent text-slate-400 hover:text-slate-200"
           )}
         >
           <FileText size={12} />
@@ -286,73 +388,100 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4">
         {activeTab === 'playlist' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-white">{currEp?.title}</h3>
-                {currEp?.description && <p className="text-xs text-white/60 mt-1">{currEp.description}</p>}
+          <div className="space-y-4 max-w-4xl mx-auto">
+            {/* Current Lesson Hero Card */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                      Somo {currIdx + 1} la {episodes.length}
+                    </span>
+                    {currEp?.duration && (
+                      <span className="text-[11px] font-mono text-slate-400">
+                        • {currEp.duration}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
+                    {currEp?.title ? currEp.title.replace(/^\d+\.\s*/, '') : item.title}
+                  </h3>
+                </div>
+
+                {/* Lesson Completion Action Button */}
+                <button
+                  onClick={() => toggleEpisodeComplete(item.id, currIdx)}
+                  className={cn(
+                    "h-9 px-3.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 self-start sm:self-auto border",
+                    completedEpisodes[`${item.id}_${currIdx}`] 
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" 
+                      : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                  )}
+                >
+                  {completedEpisodes[`${item.id}_${currIdx}`] ? (
+                    <>
+                      <CheckCircle2 size={15} className="text-emerald-400" />
+                      <span>{lang === 'en' ? 'Completed' : 'Imekamilika'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Circle size={15} className="text-slate-400" />
+                      <span>{lang === 'en' ? 'Mark Done' : 'Weka Imekamilika'}</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                onClick={() => toggleEpisodeComplete(item.id, currIdx)}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0",
-                  completedEpisodes[`${item.id}_${currIdx}`] 
-                    ? "bg-ok/20 text-ok border border-ok/30" 
-                    : "bg-white/10 text-white/70 hover:bg-white/20 border border-white/10"
-                )}
-              >
-                {completedEpisodes[`${item.id}_${currIdx}`] ? (
-                  <>
-                    <CheckCircle2 size={16} />
-                    <span>{lang === 'en' ? 'Completed' : 'Imekamilika'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Circle size={16} />
-                    <span>{lang === 'en' ? 'Mark Done' : 'Weka Imekamilika'}</span>
-                  </>
-                )}
-              </button>
-            </div>
 
-            {/* Quick Interactive Episode Tools (AI Summarizer & Live Code Playground) */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                onClick={async () => {
-                  if (aiSummary) {
-                    setAiSummary(null);
-                    return;
-                  }
-                  setSummarizing(true);
-                  const res = await summarizeLessonWithAI(
-                    currEp?.title || item.title,
-                    currEp?.description || item.desc,
-                    item.title
-                  );
-                  setAiSummary(res);
-                  setSummarizing(false);
-                }}
-                disabled={summarizing}
-                className="h-10 px-3 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
-              >
-                <Sparkles size={14} className="text-amber-300" />
-                <span>{summarizing ? 'Inatengeneza...' : aiSummary ? 'Funga Muhtasari' : '✨ Muhtasari wa AI'}</span>
-              </button>
+              {currEp?.description && (
+                <p className="text-xs text-slate-300 leading-relaxed pt-2 border-t border-slate-800/80">
+                  {currEp.description}
+                </p>
+              )}
 
-              <button
-                onClick={() => setShowPlayground(true)}
-                className="h-10 px-3 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
-              >
-                <Code2 size={14} />
-                <span>💻 Live Code Sandbox</span>
-              </button>
+              {/* Clean Quick Interactive Tools (AI Summarizer & Live Code Playground) */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  onClick={async () => {
+                    if (aiSummary) {
+                      setAiSummary(null);
+                      return;
+                    }
+                    setSummarizing(true);
+                    const res = await summarizeLessonWithAI(
+                      currEp?.title || item.title,
+                      currEp?.description || item.desc,
+                      item.title
+                    );
+                    setAiSummary(res);
+                    setSummarizing(false);
+                  }}
+                  disabled={summarizing}
+                  className={cn(
+                    "h-10 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all active:scale-98",
+                    aiSummary 
+                      ? "bg-purple-600 text-white border-purple-500" 
+                      : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-purple-300"
+                  )}
+                >
+                  <Sparkles size={14} className="text-amber-400 shrink-0" />
+                  <span className="truncate">{summarizing ? 'Inatengeneza...' : aiSummary ? 'Funga Muhtasari' : 'Muhtasari wa AI'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowPlayground(true)}
+                  className="h-10 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-indigo-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-all"
+                >
+                  <Code2 size={14} className="text-indigo-400 shrink-0" />
+                  <span className="truncate">Code Sandbox</span>
+                </button>
+              </div>
             </div>
 
             {/* AI Summary Card */}
             {aiSummary && (
-              <div className="p-4 bg-purple-950/30 border border-purple-500/40 rounded-2xl space-y-2.5 text-xs text-purple-100 animate-in fade-in">
+              <div className="p-4 bg-purple-950/40 border border-purple-500/40 rounded-2xl space-y-2.5 text-xs text-purple-100 animate-in fade-in">
                 <div className="flex items-center justify-between text-purple-300 font-black">
                   <div className="flex items-center gap-1.5">
                     <Bot size={15} />
@@ -382,58 +511,81 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
               </div>
             )}
 
-            <div className="space-y-2.5 pt-2">
-              <h4 className="text-[10px] uppercase font-black text-white/40 tracking-[2px]">
-                {lang === 'en' ? 'Course Outline' : 'Mfululizo wa Masomo'}
-              </h4>
-              {episodes.map((ep, i) => {
-                const isCurrent = currIdx === i;
-                const isDone = !!completedEpisodes[`${item.id}_${i}`];
+            {/* Course Lessons List with High Contrast & Clean Card Layout */}
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                <span>{lang === 'en' ? 'Course Outline' : 'Mfululizo wa Masomo'}</span>
+                <span className="text-[11px] font-mono text-slate-500">{episodes.length} {lang === 'en' ? 'lessons' : 'masomo'}</span>
+              </div>
 
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all",
-                      isCurrent 
-                        ? "border-primary bg-primary/15 shadow-lg shadow-primary/10" 
-                        : "border-white/5 bg-white/5 hover:bg-white/10"
-                    )}
-                  >
-                    <div 
+              <div className="space-y-2">
+                {episodes.map((ep, i) => {
+                  const isCurrent = currIdx === i;
+                  const isDone = !!completedEpisodes[`${item.id}_${i}`];
+                  const displayTitle = ep.title.replace(/^\d+\.\s*/, '');
+
+                  return (
+                    <div
+                      key={i}
                       onClick={() => setCurrIdx(i)}
-                      className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-                    >
-                      <div className={cn(
-                        "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors",
-                        isCurrent ? "bg-primary text-white shadow-md" : isDone ? "bg-ok/20 text-ok" : "bg-white/10 text-white/60"
-                      )}>
-                        {isDone ? <CheckCircle2 size={16} /> : i + 1}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className={cn("text-xs sm:text-sm font-bold truncate", isCurrent ? "text-primary" : "text-white/90")}>
-                          {ep.title}
-                        </div>
-                        <div className="text-[10px] text-white/40 font-mono mt-0.5">{ep.duration}</div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleEpisodeComplete(item.id, i);
-                      }}
                       className={cn(
-                        "p-2 rounded-lg transition-colors text-xs shrink-0",
-                        isDone ? "text-ok hover:bg-ok/10" : "text-white/30 hover:text-white/70"
+                        "p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all",
+                        isCurrent 
+                          ? "bg-slate-900 border-indigo-500/60 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/20" 
+                          : "bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/60 text-slate-300"
                       )}
-                      title={isDone ? "Imekamilika" : "Weka imekamilika"}
                     >
-                      {isDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                    </button>
-                  </div>
-                );
-              })}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors",
+                          isCurrent 
+                            ? "bg-indigo-600 text-white shadow-xs" 
+                            : isDone 
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                              : "bg-slate-800 text-slate-400"
+                        )}>
+                          {isDone ? <CheckCircle2 size={15} /> : i + 1}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "text-xs sm:text-sm font-semibold truncate",
+                              isCurrent ? "text-white font-bold" : "text-slate-300"
+                            )}>
+                              {displayTitle}
+                            </span>
+                            {isCurrent && (
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0">
+                                Sasa
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                            {ep.duration}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleEpisodeComplete(item.id, i);
+                        }}
+                        className={cn(
+                          "p-2 rounded-lg transition-colors text-xs shrink-0",
+                          isDone 
+                            ? "text-emerald-400 hover:bg-emerald-500/10" 
+                            : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                        )}
+                        title={isDone ? "Imekamilika" : "Weka imekamilika"}
+                      >
+                        {isDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
