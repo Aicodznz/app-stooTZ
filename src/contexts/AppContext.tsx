@@ -1631,7 +1631,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'AI summary error');
-      return data;
+      return {
+        ...data,
+        title: data.title || title,
+        quickSummary: data.quickSummary || data.summary || `Muhtasari wa somo la ${title}`,
+        keyPoints: (data.keyPoints && data.keyPoints.length > 0) 
+          ? data.keyPoints 
+          : (data.quickTakeaways && data.quickTakeaways.length > 0) 
+            ? data.quickTakeaways 
+            : ['Jifunze misingi ya somo hili kwa makini.', 'Fanya mazoezi kwa vitendo kwenye Code Playground.', 'Uliza maswali kwenye jukwaa la Q&A ukikwama.']
+      };
     } catch (err: any) {
       return {
         title,
