@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ContentItem, Episode, AILessonSummary } from '../types';
+import { ContentItem, Episode, AILessonSummary, PlaygroundSnippet } from '../types';
 import { 
   X, 
   ChevronLeft, 
@@ -26,12 +26,16 @@ import {
   Bot,
   Award,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  Check,
+  Type
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
 import { CodePlayground } from './CodePlayground';
 import { AIAssistantModal } from './AIAssistantModal';
+import { getOrCreateGuide } from '../data/courseGuides';
 
 // Helper to reliably parse YouTube video ID and provide embed, direct URL & thumbnail
 function parseYouTubeVideo(url: string) {
@@ -830,92 +834,582 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
 };
 
 export const PDFViewerOverlay: React.FC<{ item: ContentItem; onClose: () => void }> = ({ item, onClose }) => {
-  const [zoom, setZoom] = useState(100);
-  const [readingTheme, setReadingTheme] = useState<'light' | 'sepia' | 'dark'>('light');
+  const { lang, addPoints } = useApp();
+  const guide = getOrCreateGuide(item);
 
-  const getBgColor = () => {
-    if (readingTheme === 'dark') return 'bg-[#12121e] text-white';
-    if (readingTheme === 'sepia') return 'bg-[#f4ecd8] text-[#5b4636]';
-    return 'bg-white text-black';
+  // States
+  const [activeMode, setActiveMode] = useState<'reader' | 'pdf'>('reader');
+  const [chapterIdx, setChapterIdx] = useState(0);
+  const [readingTheme, setReadingTheme] = useState<'light' | 'sepia' | 'dark'>('dark');
+  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
+  const [zoom, setZoom] = useState(100);
+  const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
+  const [showXpToast, setShowXpToast] = useState(false);
+  const [activeSnippetForPlayground, setActiveSnippetForPlayground] = useState<PlaygroundSnippet | null>(null);
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  // Completed chapters stored locally per course
+  const [completedChapters, setCompletedChapters] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(`guide_done_${item.id}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const currentChapter = guide.chapters[chapterIdx] || guide.chapters[0];
+  const completedCount = guide.chapters.filter((_, idx) => completedChapters[`${item.id}_${idx}`]).length;
+  const progressPercent = Math.round((completedCount / guide.chapters.length) * 100);
+
+  const toggleChapterComplete = (idx: number) => {
+    const key = `${item.id}_${idx}`;
+    const nextState = !completedChapters[key];
+    const updated = { ...completedChapters, [key]: nextState };
+    setCompletedChapters(updated);
+    try {
+      localStorage.setItem(`guide_done_${item.id}`, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+
+    if (nextState) {
+      addPoints(10);
+      setShowXpToast(true);
+      setTimeout(() => setShowXpToast(false), 2600);
+    }
   };
 
+  const handleCopyCode = (id: string, code: string) => {
+    navigator.clipboard?.writeText(code);
+    setCopiedSnippetId(id);
+    setTimeout(() => setCopiedSnippetId(null), 2000);
+  };
+
+  const handleOpenInSandbox = (codeExample: { language: 'html' | 'css' | 'javascript' | 'python'; title: string; code: string }) => {
+    const snippet: PlaygroundSnippet = {
+      id: `guide-${Date.now()}`,
+      title: codeExample.title,
+      language: codeExample.language,
+      html: codeExample.language === 'html' ? codeExample.code : undefined,
+      css: codeExample.language === 'css' ? codeExample.code : undefined,
+      javascript: codeExample.language === 'javascript' ? codeExample.code : undefined,
+      python: codeExample.language === 'python' ? codeExample.code : undefined,
+      desc: `Msimbo kutoka mwongozo wa ${item.title} - ${currentChapter.title}`
+    };
+    setActiveSnippetForPlayground(snippet);
+  };
+
+  // Reading Theme Styling
+  const getThemeStyles = () => {
+    if (readingTheme === 'dark') {
+      return {
+        bg: 'bg-[#080b14] text-slate-100',
+        bar: 'bg-slate-950/95 border-slate-800/80 text-slate-200',
+        subBar: 'bg-slate-900/90 border-slate-800/80 text-slate-300',
+        card: 'bg-slate-900/80 border-slate-800 text-slate-200',
+        codeBg: 'bg-slate-950 border-slate-800 text-slate-100',
+        tip: 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200',
+        textMuted: 'text-slate-400',
+        accent: 'text-indigo-400',
+        activePill: 'bg-indigo-600 text-white shadow-xs'
+      };
+    }
+    if (readingTheme === 'sepia') {
+      return {
+        bg: 'bg-[#f6efe1] text-[#3d312a]',
+        bar: 'bg-[#ede3ce] border-[#d8cbb1] text-[#34271f]',
+        subBar: 'bg-[#e7dcbf] border-[#d8cbb1] text-[#34271f]',
+        card: 'bg-[#eee4cf] border-[#dacdb5] text-[#3d312a]',
+        codeBg: 'bg-[#29221b] border-[#44382d] text-[#f2e9dc]',
+        tip: 'bg-[#e2d5b6] border-[#cfbea0] text-[#423120]',
+        textMuted: 'text-[#6e5d50]',
+        accent: 'text-[#8b572a]',
+        activePill: 'bg-[#8b572a] text-white shadow-xs'
+      };
+    }
+    // light
+    return {
+      bg: 'bg-slate-50 text-slate-900',
+      bar: 'bg-white border-slate-200 text-slate-800',
+      subBar: 'bg-slate-100/90 border-slate-200 text-slate-700',
+      card: 'bg-white border-slate-200 shadow-xs text-slate-800',
+      codeBg: 'bg-slate-900 border-slate-800 text-slate-100',
+      tip: 'bg-indigo-50 border-indigo-200 text-indigo-900',
+      textMuted: 'text-slate-500',
+      accent: 'text-indigo-600',
+      activePill: 'bg-indigo-600 text-white shadow-xs'
+    };
+  };
+
+  const theme = getThemeStyles();
+  const pdfUrl = item.pdfPath || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+  const googleDocsEmbedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+
   return (
-    <div className="fixed inset-0 z-[150] bg-[#0d0d1a] flex flex-col page-anim">
-      <header className="h-14 flex items-center px-4 justify-between bg-black/90 backdrop-blur-md text-white border-b border-white/10 shrink-0">
-        <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-          <ChevronLeft size={24} />
-        </button>
-        <div className="text-center truncate px-2">
-          <h2 className="font-bold text-xs sm:text-sm truncate max-w-[180px] sm:max-w-[260px]">{item.title}</h2>
-          <div className="text-[10px] text-white/50">{item.level || 'Beginner'} • PDF Guide</div>
+    <div className={cn("fixed inset-0 z-[150] flex flex-col page-anim select-none", theme.bg)}>
+      {/* XP Toast */}
+      {showXpToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[200] bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs animate-bounce border border-amber-300/40">
+          <Zap size={16} fill="currentColor" />
+          <span>{lang === 'en' ? 'Chapter Finished! +10 XP 🔥' : 'Sura Imekamilika! +10 XP Umejipatia 🔥'}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => setZoom(z => Math.max(z - 15, 60))} 
-            className="p-2 rounded-lg hover:bg-white/10 text-white/80"
-            title="Zoom Out"
-          >
-            <ZoomOut size={16} />
-          </button>
-          <span className="text-[10px] font-mono text-white/60">{zoom}%</span>
-          <button 
-            onClick={() => setZoom(z => Math.min(z + 15, 160))} 
-            className="p-2 rounded-lg hover:bg-white/10 text-white/80"
-            title="Zoom In"
-          >
-            <ZoomIn size={16} />
-          </button>
+      )}
+
+      {/* Main Header */}
+      <header className={cn("h-14 flex items-center px-3 sm:px-4 justify-between border-b shrink-0 transition-colors z-20 backdrop-blur-md", theme.bar)}>
+        {/* Back Button */}
+        <button 
+          onClick={onClose} 
+          className="p-2 -ml-1 rounded-xl opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+          title="Funga / Rudi Nyuma"
+        >
+          <ChevronLeft size={22} />
+        </button>
+
+        {/* Title and Badge */}
+        <div className="text-center truncate px-2 min-w-0 flex-1">
+          <h2 className="font-bold text-xs sm:text-sm truncate max-w-[200px] sm:max-w-[320px] mx-auto">
+            {item.title}
+          </h2>
+          <div className={cn("text-[10px] flex items-center justify-center gap-1.5 mt-0.5", theme.textMuted)}>
+            <span className="font-semibold uppercase tracking-wider">{item.level || 'Beginner'}</span>
+            <span>•</span>
+            <span>{activeMode === 'reader' ? (lang === 'en' ? 'Interactive Guide' : 'Mwongozo wa Kitabu') : 'PDF Document'}</span>
+          </div>
+        </div>
+
+        {/* Right Actions: Mode Switcher & Controls */}
+        <div className="flex items-center gap-1.5">
+          {/* Mode Switcher Pill */}
+          <div className="flex items-center p-0.5 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5">
+            <button
+              onClick={() => setActiveMode('reader')}
+              className={cn(
+                "px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all",
+                activeMode === 'reader' ? theme.activePill : "opacity-60 hover:opacity-100"
+              )}
+              title="Soma Mwongozo wa Kitabu Hapa"
+            >
+              <BookOpen size={12} />
+              <span className="hidden sm:inline">Kitabu</span>
+            </button>
+            <button
+              onClick={() => setActiveMode('pdf')}
+              className={cn(
+                "px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all",
+                activeMode === 'pdf' ? theme.activePill : "opacity-60 hover:opacity-100"
+              )}
+              title="Tazama Faili Halisi la PDF"
+            >
+              <FileText size={12} />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+          </div>
+
+          {/* External Open / Download Link */}
           <a
-            href={item.pdfPath || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'}
-            download={`${item.title}.pdf`}
+            href={pdfUrl}
             target="_blank"
             rel="noreferrer"
-            className="p-2 rounded-lg hover:bg-white/10 text-white/80 ml-1"
-            title="Download PDF"
+            className="p-2 rounded-lg opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            title="Fungua au Pakua PDF kwenye Kichupo Kipya"
           >
-            <Download size={16} />
+            <ExternalLink size={16} />
           </a>
         </div>
       </header>
 
-      {/* Reading Theme controls */}
-      <div className="h-9 bg-black/60 border-b border-white/5 px-4 flex items-center justify-between text-xs shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-white/40 font-bold uppercase">Background:</span>
-          <button 
-            onClick={() => setReadingTheme('light')}
-            className={cn("px-2 py-0.5 rounded text-[10px] font-bold", readingTheme === 'light' ? "bg-white text-black" : "text-white/60")}
-          >
-            Light
-          </button>
-          <button 
-            onClick={() => setReadingTheme('sepia')}
-            className={cn("px-2 py-0.5 rounded text-[10px] font-bold", readingTheme === 'sepia' ? "bg-[#f4ecd8] text-[#5b4636]" : "text-white/60")}
-          >
-            Sepia
-          </button>
-          <button 
-            onClick={() => setReadingTheme('dark')}
-            className={cn("px-2 py-0.5 rounded text-[10px] font-bold", readingTheme === 'dark' ? "bg-slate-700 text-white" : "text-white/60")}
-          >
-            Dark
-          </button>
+      {/* Secondary Controls Toolbar (Theme, Font Size, Progress) */}
+      <div className={cn("h-10 px-3 sm:px-4 border-b flex items-center justify-between text-xs shrink-0 transition-colors z-10", theme.subBar)}>
+        {/* Left: Reading Theme Selectors */}
+        <div className="flex items-center gap-1.5">
+          <span className={cn("text-[10px] font-bold uppercase tracking-wider mr-1", theme.textMuted)}>
+            Theme:
+          </span>
+          {(['light', 'sepia', 'dark'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setReadingTheme(t)}
+              className={cn(
+                "px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-all border",
+                readingTheme === t 
+                  ? "border-current font-black shadow-xs" 
+                  : "border-transparent opacity-60 hover:opacity-100"
+              )}
+            >
+              {t}
+            </button>
+          ))}
         </div>
-        <div className="text-[10px] text-white/40">In-App PDF Reader</div>
+
+        {/* Right: Font Size Controls (Reader Mode) or Zoom (PDF Mode) */}
+        {activeMode === 'reader' ? (
+          <div className="flex items-center gap-1.5">
+            <span className={cn("text-[10px] font-bold uppercase tracking-wider mr-0.5", theme.textMuted)}>
+              Size:
+            </span>
+            {(['sm', 'md', 'lg'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFontSize(s)}
+                className={cn(
+                  "w-6 h-6 rounded flex items-center justify-center font-bold text-[11px] transition-all border",
+                  fontSize === s 
+                    ? "border-current font-black" 
+                    : "border-transparent opacity-60 hover:opacity-100"
+                )}
+              >
+                {s === 'sm' ? 'A-' : s === 'md' ? 'A' : 'A+'}
+              </button>
+            ))}
+
+            {/* AI Assistant Button */}
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="ml-1.5 h-6 px-2 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 font-bold text-[11px] flex items-center gap-1 transition-all"
+              title="Uliza Mwalimu wa AI kuhusu sura hii"
+            >
+              <Sparkles size={11} className="text-amber-400" />
+              <span className="hidden sm:inline">AI Help</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setZoom(z => Math.max(z - 15, 60))}
+              className="p-1 rounded opacity-70 hover:opacity-100"
+              title="Punguza Ukubwa"
+            >
+              <ZoomOut size={14} />
+            </button>
+            <span className="text-[10px] font-mono px-1">{zoom}%</span>
+            <button
+              onClick={() => setZoom(z => Math.min(z + 15, 160))}
+              className="p-1 rounded opacity-70 hover:opacity-100"
+              title="Ongeza Ukubwa"
+            >
+              <ZoomIn size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className={cn("flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center transition-colors", getBgColor())}>
-        <div 
-          className="w-full h-full max-w-4xl shadow-2xl rounded-xl overflow-hidden transition-transform duration-200"
-          style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
-        >
-          <iframe 
-            src={item.pdfPath || `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`}
-            className="w-full h-full min-h-[600px] border-none rounded-xl bg-white"
-            title="PDF Document"
-          />
+      {/* Mode 1: Interactive In-App Book / Guide Reader (The High-Craft Experience) */}
+      {activeMode === 'reader' && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Chapter Selector & Progress Header Strip */}
+          <div className={cn("px-3 sm:px-4 py-2 border-b shrink-0 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar", theme.subBar)}>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] font-bold font-mono">
+                Sura {chapterIdx + 1}/{guide.chapters.length}
+              </span>
+              <span className={cn("text-[11px]", theme.textMuted)}>•</span>
+              <span className="text-[11px] font-bold text-emerald-500 font-mono">
+                {progressPercent}% Kamilifu
+              </span>
+            </div>
+
+            {/* Chapter Pills Carousel */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              {guide.chapters.map((ch, idx) => {
+                const isCurrent = chapterIdx === idx;
+                const isDone = !!completedChapters[`${item.id}_${idx}`];
+
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => setChapterIdx(idx)}
+                    className={cn(
+                      "h-7 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all border",
+                      isCurrent 
+                        ? theme.activePill 
+                        : "bg-black/5 dark:bg-white/5 border-transparent opacity-70 hover:opacity-100"
+                    )}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full bg-black/10 dark:bg-white/10 text-[10px] font-bold flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                    )}
+                    <span className="truncate max-w-[110px] sm:max-w-[160px]">
+                      {ch.title.replace(/^\d+\.\s*/, '')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chapter Reading Canvas */}
+          <div className="flex-1 overflow-y-auto p-3.5 sm:p-6">
+            <div className="max-w-3xl mx-auto space-y-6">
+              {/* Chapter Banner */}
+              <div className={cn("p-4 sm:p-5 rounded-2xl border space-y-3", theme.card)}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                        Sura ya {chapterIdx + 1}
+                      </span>
+                      <span className={cn("text-[11px] font-mono", theme.textMuted)}>
+                        • Muda wa Kusoma: {currentChapter.duration}
+                      </span>
+                    </div>
+                    <h1 className={cn(
+                      "font-extrabold leading-snug tracking-tight",
+                      fontSize === 'sm' ? 'text-lg sm:text-xl' : fontSize === 'md' ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
+                    )}>
+                      {currentChapter.title}
+                    </h1>
+                  </div>
+
+                  {/* Complete Button */}
+                  <button
+                    onClick={() => toggleChapterComplete(chapterIdx)}
+                    className={cn(
+                      "h-9 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 self-start sm:self-auto border",
+                      completedChapters[`${item.id}_${chapterIdx}`]
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                        : "bg-black/5 dark:bg-white/10 hover:bg-black/10 opacity-80 hover:opacity-100 border-black/10 dark:border-white/10"
+                    )}
+                  >
+                    {completedChapters[`${item.id}_${chapterIdx}`] ? (
+                      <>
+                        <CheckCircle2 size={15} className="text-emerald-400" />
+                        <span>{lang === 'en' ? 'Chapter Done' : 'Imekamilika'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Circle size={15} />
+                        <span>{lang === 'en' ? 'Mark Done (+10 XP)' : 'Weka Imekamilika (+10 XP)'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className={cn("text-xs sm:text-sm leading-relaxed pt-2 border-t border-black/10 dark:border-white/10", theme.textMuted)}>
+                  {currentChapter.summary}
+                </p>
+              </div>
+
+              {/* Sections */}
+              <div className="space-y-6">
+                {currentChapter.sections.map((section, sIdx) => (
+                  <div key={sIdx} className={cn("p-4 sm:p-5 rounded-2xl border space-y-4 shadow-xs", theme.card)}>
+                    <h3 className={cn(
+                      "font-bold leading-snug flex items-center gap-2",
+                      fontSize === 'sm' ? 'text-sm sm:text-base' : fontSize === 'md' ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
+                    )}>
+                      <span className={cn("text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10", theme.accent)}>
+                        {sIdx + 1}
+                      </span>
+                      <span>{section.heading}</span>
+                    </h3>
+
+                    {/* Paragraph Content */}
+                    <div className={cn(
+                      "leading-relaxed whitespace-pre-line select-text",
+                      fontSize === 'sm' ? 'text-xs sm:text-sm' : fontSize === 'md' ? 'text-sm sm:text-base' : 'text-base sm:text-lg'
+                    )}>
+                      {section.content}
+                    </div>
+
+                    {/* Pro Tip Box */}
+                    {section.tip && (
+                      <div className={cn("p-3.5 rounded-xl border flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed", theme.tip)}>
+                        <Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold block mb-0.5">Dokezo la Kitaalamu (Pro-Tip):</span>
+                          <span>{section.tip}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interactive Code Example Box */}
+                    {section.codeExample && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between px-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                              {section.codeExample.language}
+                            </span>
+                            <span className={cn("text-xs font-bold truncate max-w-[200px] sm:max-w-none", theme.textMuted)}>
+                              {section.codeExample.title}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Copy Button */}
+                            <button
+                              onClick={() => handleCopyCode(`${chapterIdx}_${sIdx}`, section.codeExample!.code)}
+                              className="h-7 px-2.5 rounded-lg text-xs font-semibold bg-black/10 dark:bg-white/10 hover:bg-black/20 text-current flex items-center gap-1 transition-all"
+                              title="Nakili msimbo huu"
+                            >
+                              {copiedSnippetId === `${chapterIdx}_${sIdx}` ? (
+                                <>
+                                  <Check size={13} className="text-emerald-400" />
+                                  <span className="text-[11px] text-emerald-400">Imenakiliwa!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={13} />
+                                  <span className="text-[11px] hidden sm:inline">Nakili</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Try in Code Sandbox Button */}
+                            <button
+                              onClick={() => handleOpenInSandbox(section.codeExample!)}
+                              className="h-7 px-2.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
+                              title="Jaribu na uendeshe msimbo huu kwenye Sandbox"
+                            >
+                              <Code2 size={13} />
+                              <span className="text-[11px]">Jaribu Kwenye Sandbox</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Code Display */}
+                        <div className={cn("rounded-xl border p-3 font-mono text-xs overflow-x-auto select-text leading-normal", theme.codeBg)}>
+                          <pre>
+                            <code>{section.codeExample.code}</code>
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Chapter Navigation Footer */}
+              <div className={cn("p-4 rounded-2xl border flex items-center justify-between gap-2 shadow-xs", theme.card)}>
+                <button
+                  disabled={chapterIdx === 0}
+                  onClick={() => setChapterIdx(c => Math.max(c - 1, 0))}
+                  className="h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:bg-black/10 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  <ChevronLeft size={16} />
+                  <span>Sura Iliyopita</span>
+                </button>
+
+                <button
+                  onClick={() => toggleChapterComplete(chapterIdx)}
+                  className={cn(
+                    "h-9 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all",
+                    completedChapters[`${item.id}_${chapterIdx}`]
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                      : "bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500"
+                  )}
+                >
+                  <CheckCircle2 size={15} />
+                  <span className="hidden sm:inline">
+                    {completedChapters[`${item.id}_${chapterIdx}`] ? 'Imekamilika ✓' : 'Kamilisha Sura Hii (+10 XP)'}
+                  </span>
+                  <span className="sm:hidden">
+                    {completedChapters[`${item.id}_${chapterIdx}`] ? 'Tayari ✓' : '+10 XP'}
+                  </span>
+                </button>
+
+                {chapterIdx < guide.chapters.length - 1 ? (
+                  <button
+                    onClick={() => setChapterIdx(c => c + 1)}
+                    className="h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-xs"
+                  >
+                    <span>Sura Inayofuata</span>
+                    <ChevronRight size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={onClose}
+                    className="h-9 px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 transition-all shadow-xs"
+                  >
+                    <span>Kamilisha Mwongozo 🎉</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Mode 2: Original PDF Document (With Smart Fallback so user NEVER sees a broken icon) */}
+      {activeMode === 'pdf' && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Friendly Mobile/Iframe Helper Banner */}
+          <div className="bg-indigo-950/80 border-b border-indigo-800/80 px-3 sm:px-4 py-2 text-xs text-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-amber-400 shrink-0" />
+              <span>
+                Kivinjari kinazuia kuonyesha PDF? Unaweza kusoma kitabu au kufungua nje:
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveMode('reader')}
+                className="h-7 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 transition-all"
+              >
+                <BookOpen size={12} />
+                <span>Soma Kitabu Hapa</span>
+              </button>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="h-7 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1 transition-all border border-slate-700"
+              >
+                <ExternalLink size={12} />
+                <span>Tab Mpya</span>
+              </a>
+              <a
+                href={pdfUrl}
+                download={`${item.title}.pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="h-7 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1 transition-all border border-slate-700"
+              >
+                <Download size={12} />
+                <span>Pakua</span>
+              </a>
+            </div>
+          </div>
+
+          {/* PDF Frame Container using Google Docs Viewer Embed */}
+          <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-slate-950/80">
+            <div 
+              className="w-full h-full max-w-4xl shadow-2xl rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 transition-transform duration-200 relative flex flex-col"
+              style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
+            >
+              <iframe 
+                src={googleDocsEmbedUrl}
+                className="w-full flex-1 min-h-[550px] border-none bg-white rounded-2xl"
+                title={`${item.title} PDF`}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Code Playground Modal if launched from a code snippet */}
+      {activeSnippetForPlayground && (
+        <div className="fixed inset-0 z-[250] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="absolute inset-0" onClick={() => setActiveSnippetForPlayground(null)} />
+          <div className="relative w-full max-w-7xl bg-[#0f172a] border border-slate-800 rounded-3xl p-3 sm:p-6 shadow-2xl my-auto z-10 max-h-[96vh] overflow-y-auto">
+            <CodePlayground 
+              initialSnippet={activeSnippetForPlayground}
+              onClose={() => setActiveSnippetForPlayground(null)} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* AI Assistant Modal */}
+      {showAIModal && (
+        <AIAssistantModal onClose={() => setShowAIModal(false)} />
+      )}
     </div>
   );
 };
