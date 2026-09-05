@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ContentItem, Episode, AILessonSummary, PlaygroundSnippet } from '../types';
 import { 
   X, 
@@ -49,8 +49,10 @@ function parseYouTubeVideo(url: string) {
     videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
   }
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const originParam = origin ? `&origin=${encodeURIComponent(origin)}` : '';
   const embedUrl = videoId 
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1${originParam}`
     : url;
   const directUrl = videoId
     ? `https://www.youtube.com/watch?v=${videoId}`
@@ -68,6 +70,11 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
   const [activeTab, setActiveTab] = useState<'playlist' | 'qa' | 'notes' | 'reviews'>('playlist');
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
+  const autoAdvanceRef = useRef<boolean>(true);
+  const [playerToast, setPlayerToast] = useState<{ message: string; icon?: 'speed' | 'zap' | 'check' } | null>(null);
+  const toastTimeoutRef = useRef<any>(null);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [showXpAlert, setShowXpAlert] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
   const [replyText, setReplyText] = useState<Record<string, string>>({});
@@ -86,6 +93,74 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
   const episodes = item.episodes || [];
   const currEp = episodes[currIdx];
   const videoInfo = parseYouTubeVideo(currEp?.url || '');
+
+  // Keep ref synchronized
+  useEffect(() => {
+    autoAdvanceRef.current = autoAdvance;
+  }, [autoAdvance]);
+
+  const showToast = useCallback((message: string, icon: 'speed' | 'zap' | 'check' = 'speed') => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setPlayerToast({ message, icon });
+    toastTimeoutRef.current = setTimeout(() => {
+      setPlayerToast(null);
+    }, 2400);
+  }, []);
+
+  // Send postMessage commands to the YouTube iframe API
+  const sendYouTubeCommand = useCallback((func: string, args: any[] = []) => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: 'command',
+            func,
+            args,
+          }),
+          '*'
+        );
+      } catch (err) {
+        console.warn('YouTube postMessage error:', err);
+      }
+    }
+  }, []);
+
+  const changePlaybackSpeed = (speed: number) => {
+    setPlaybackSpeed(speed);
+    // Send rate command immediately and in short intervals to ensure YouTube applies it
+    sendYouTubeCommand('setPlaybackRate', [speed]);
+    setTimeout(() => sendYouTubeCommand('setPlaybackRate', [speed]), 300);
+    setTimeout(() => sendYouTubeCommand('setPlaybackRate', [speed]), 800);
+    showToast(lang === 'en' ? `Playback Speed: ${speed}x ⚡` : `Kasi ya Video: ${speed}x ⚡`, 'speed');
+  };
+
+  const toggleAutoAdvance = () => {
+    const next = !autoAdvance;
+    setAutoAdvance(next);
+    autoAdvanceRef.current = next;
+    if (next) {
+      showToast(
+        lang === 'en' ? 'Auto-Next ON ⚡ (Next lesson plays automatically)' : 'Auto-Next Imewashwa ⚡ (Somo linalofuata litaanza likiishe)',
+        'zap'
+      );
+    } else {
+      showToast(
+        lang === 'en' ? 'Auto-Next OFF ⏸️' : 'Auto-Next Imezimwa ⏸️',
+        'zap'
+      );
+    }
+  };
+
+  // Called when YouTube iframe completes loading
+  const handleIframeLoad = () => {
+    setTimeout(() => {
+      sendYouTubeCommand('listening');
+      sendYouTubeCommand('setPlaybackRate', [playbackSpeed]);
+    }, 600);
+    setTimeout(() => {
+      sendYouTubeCommand('setPlaybackRate', [playbackSpeed]);
+    }, 1600);
+  };
 
   // Calculate completed count
   const completedCount = episodes.filter((_, idx) => completedEpisodes[`${item.id}_${idx}`]).length;
@@ -134,7 +209,7 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
     setTimeout(() => setReviewSubmitted(false), 3000);
   };
 
-  const handleNextEpisode = () => {
+  const handleNextEpisode = useCallback(() => {
     if (currIdx < episodes.length - 1) {
       // Auto-mark current as completed and award XP if not already done
       if (!completedEpisodes[`${item.id}_${currIdx}`]) {
@@ -153,7 +228,41 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
         setTimeout(() => setShowXpAlert(false), 3000);
       }
     }
-  };
+  }, [currIdx, episodes.length, completedEpisodes, item.id, toggleEpisodeComplete, addPoints]);
+
+  // Listen to YouTube API events (video ended event for Auto-Advance)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        // YouTube Player API event format:
+        // { event: 'onStateChange', info: 0 } (0 is YT.PlayerState.ENDED)
+        // or { event: 'infoDelivery', info: { playerState: 0 } }
+        const state = data?.info?.playerState !== undefined 
+          ? data.info.playerState 
+          : (data?.event === 'onStateChange' ? data?.info : undefined);
+
+        if (state === 0) {
+          // Video finished!
+          if (autoAdvanceRef.current) {
+            showToast(lang === 'en' ? 'Lesson completed! Loading next... 🚀' : 'Somo limekamilika! Inahamia somo linalofuata... 🚀', 'zap');
+            setTimeout(() => {
+              handleNextEpisode();
+            }, 900);
+          }
+        }
+      } catch {
+        // Ignore non-JSON messages
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, [handleNextEpisode, lang, showToast]);
 
   const handlePrevEpisode = () => {
     if (currIdx > 0) {
@@ -217,15 +326,29 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
 
       {/* Video Container */}
       <div className="aspect-video w-full bg-slate-950 relative shrink-0 shadow-2xl border-b border-slate-800/80 group">
+        {/* Floating Player Toast Notification */}
+        {playerToast && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-slate-950/90 backdrop-blur-md border border-indigo-500/50 text-white px-3 py-1.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-bold animate-in fade-in zoom-in-95 pointer-events-none">
+            {playerToast.icon === 'zap' ? (
+              <Zap size={14} className="text-emerald-400 fill-emerald-400 animate-pulse" />
+            ) : (
+              <Sparkles size={14} className="text-amber-400" />
+            )}
+            <span>{playerToast.message}</span>
+          </div>
+        )}
+
         {currEp ? (
           <>
             <iframe 
+              ref={iframeRef}
               key={currEp.url}
-              src={`${videoInfo.embedUrl}${videoInfo.embedUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1&enablejsapi=1`}
+              src={videoInfo.embedUrl}
               className="w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
+              onLoad={handleIframeLoad}
               title={currEp.title}
             />
 
@@ -260,13 +383,13 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
       </div>
 
       {/* Sleek, Single-Row Player Control Strip (Clean & Uncluttered) */}
-      <div className="bg-slate-950/95 border-b border-slate-800/80 px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+      <div className="bg-slate-950/95 border-b border-slate-800/80 px-2.5 sm:px-4 py-2 flex items-center justify-between gap-2 shrink-0">
         {/* Left: Previous & Next Lesson navigation */}
         <div className="flex items-center gap-1.5">
           <button
             onClick={handlePrevEpisode}
             disabled={currIdx === 0}
-            className="h-8 px-2.5 sm:px-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-colors"
+            className="h-8 px-2 sm:px-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-colors active:scale-95"
             title="Somo Lililopita"
           >
             <SkipBack size={13} />
@@ -276,16 +399,16 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
           <button
             onClick={handleNextEpisode}
             className={cn(
-              "h-8 px-3 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs",
+              "h-8 px-2.5 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95",
               currIdx === episodes.length - 1
                 ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950"
                 : "bg-indigo-600 hover:bg-indigo-500 text-white"
             )}
             title="Somo Linalofuata"
           >
-            <span>
+            <span className="truncate max-w-[110px] sm:max-w-none">
               {currIdx === episodes.length - 1 
-                ? (lang === 'en' ? 'Finish Course 🎉' : 'Kamilisha Kozi 🎉') 
+                ? (lang === 'en' ? 'Finish 🎉' : 'Kamilisha 🎉') 
                 : (lang === 'en' ? 'Next Lesson' : 'Somo Linalofuata')}
             </span>
             <SkipForward size={13} />
@@ -293,38 +416,39 @@ export const VideoPlayerOverlay: React.FC<{ item: ContentItem; onClose: () => vo
         </div>
 
         {/* Right: Playback Speed & Auto-Advance */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Segmented Speed Selector */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Segmented Speed Selector with full click handler */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
-            {[0.75, 1.0, 1.25, 1.5].map((speed) => (
+            {[0.75, 1.0, 1.25, 1.5, 2.0].map((speed) => (
               <button
                 key={speed}
-                onClick={() => setPlaybackSpeed(speed)}
+                onClick={() => changePlaybackSpeed(speed)}
                 className={cn(
-                  "px-1.5 sm:px-2 py-0.5 rounded text-[11px] font-semibold transition-all",
+                  "px-1.5 sm:px-2 py-0.5 rounded text-[11px] font-semibold transition-all active:scale-95",
                   playbackSpeed === speed 
-                    ? "bg-slate-800 text-white font-bold shadow-xs" 
+                    ? "bg-indigo-600 text-white font-bold shadow-xs" 
                     : "text-slate-400 hover:text-slate-200"
                 )}
+                title={`Weka kasi ya video kuwa ${speed}x`}
               >
                 {speed}x
               </button>
             ))}
           </div>
 
-          {/* Auto-Advance Toggle */}
+          {/* Auto-Advance Toggle with clear label and active feedback */}
           <button
-            onClick={() => setAutoAdvance(!autoAdvance)}
+            onClick={toggleAutoAdvance}
             className={cn(
-              "h-7 px-2 rounded-lg text-[11px] font-semibold flex items-center gap-1 border transition-all",
+              "h-7 px-2 sm:px-2.5 rounded-lg text-[11px] font-bold flex items-center gap-1 border transition-all active:scale-95",
               autoAdvance 
-                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" 
+                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-xs shadow-emerald-950/40" 
                 : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200"
             )}
-            title="Endesha somo linalofuata kiotomatiki"
+            title={autoAdvance ? "Auto-Next Imewashwa: Video ikiisha inasonga somo linalofuata" : "Auto-Next Imezimwa: Bofya kuwasha"}
           >
-            <Zap size={11} className={autoAdvance ? "fill-emerald-400 text-emerald-400" : ""} />
-            <span className="hidden sm:inline">Auto</span>
+            <Zap size={11} className={autoAdvance ? "fill-emerald-400 text-emerald-400 animate-pulse" : "text-slate-400"} />
+            <span className="text-[10px] font-bold">Auto</span>
           </button>
         </div>
       </div>
